@@ -16,7 +16,7 @@ setuptools.setup(
     description="FFAVES",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    scripts=[script for script in glob('FFAVES/*') if os.path.isfile(script)],
+    scripts=[script for script in glob('ffaves/*') if os.path.isfile(script)],
     url="https://github.com/aradley/FFAVES",
     packages=setuptools.find_packages(),
     install_requires=requirements,
