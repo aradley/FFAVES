@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ### Dependencies ###
 
 import numpy as np
