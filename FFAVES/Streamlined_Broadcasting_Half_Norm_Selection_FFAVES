@@ -597,10 +597,6 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
 
 
 
-if __name__ == '__main__':
-    FFAVES([[0,0],[0,0]])
-
-
 
 
 
