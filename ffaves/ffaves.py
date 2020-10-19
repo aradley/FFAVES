@@ -385,7 +385,7 @@ def Calc_QG_Entropies(x,Group1_Cardinality,Group2_Cardinality,Permutable):
     return Entropy
 
 
-def FFAVES(Binarised_Input_Matrix, Min_Clust_Size, Divergences_Significance_Cut_Off = 0.99, Use_Cores=(multiprocessing.cpu_count()-2), Num_Cycles = 1, Save_Step_Plots = 0):
+def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cut_Off = 0.99, Use_Cores=(multiprocessing.cpu_count()-2), Num_Cycles = 1, Save_Step_Plots = 0):
     # Track what cycle FFAVES is on.
     Imputation_Cycle = 1
     print("Number of cells: " + str(Binarised_Input_Matrix.shape[0]))
@@ -593,10 +593,6 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size, Divergences_Significance_Cut_
         np.save("Track_Percentage_Imputation.npy",Track_Percentage_Imputation)
     print("Percentage of data suggested for imputation: " + str(np.round((Track_Imputations[Imputation_Cycle-1][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")      
     return Track_Imputations, Track_Percentage_Imputation, Information_Gains_Matrix, Weights_Matrix
-
-
-
-
 
 
 
