@@ -5,15 +5,13 @@ from functools import partial
 import multiprocessing
 import copy
 from scipy.stats import halfnorm, zscore
+import matplotlib.pyplot as plt
 
 ### Dependencies ###
 
 ### Find the partition basis for each reference feature.
 def Find_Partitions(Input_Binarised_Data):
-    # Make Feature_Partion_IDs global so it is inherited to cores rather than pickled.
-    global Feature_Partion_IDs
     # Create variables to fill.
-    Feature_Partion_IDs = [[]] * Input_Binarised_Data.shape[1] 
     Permutables = np.zeros(Input_Binarised_Data.shape[1])
     Switch_State_Inidicies = np.zeros(Input_Binarised_Data.shape[1])
     i = 0
@@ -23,20 +21,17 @@ def Find_Partitions(Input_Binarised_Data):
         Feature_Temp_1 = np.where(Feature_Temp == 1)[0]
         Feature_Temp_0 = np.where(Feature_Temp == 0)[0]
         if Feature_Temp_1.shape[0] >= Feature_Temp_0.shape[0]:
-            Feature_Partion_IDs[i] = Feature_Temp_0
-            Permutables[i] = Feature_Partion_IDs[i].shape[0]
+            Permutables[i] = Feature_Temp_0.shape[0]
             Switch_State_Inidicies[i] = 1
         if Feature_Temp_0.shape[0] > Feature_Temp_1.shape[0]:
-            Feature_Partion_IDs[i] = Feature_Temp_1
-            Permutables[i] = Feature_Partion_IDs[i].shape[0]
+            Permutables[i] = Feature_Temp_1.shape[0]
         i = i + 1
-    Feature_Partion_IDs = np.asarray(Feature_Partion_IDs,dtype=object)
     # Return a vector of the cardinality of each less common group, and whether the less common group is actually the 0 (inactive) state.
     return Permutables, Switch_State_Inidicies
 
 ### Find minority group overlapping inds for each feature. Calculating this now streamlines future calculations
 def Parallel_Find_Minority_Group_Overlaps(Use_Cores):
-    Inds = np.arange(Feature_Partion_IDs.shape[0])
+    Inds = np.arange(Gene_Cardinality)
     if __name__ == '__main__':
         pool = multiprocessing.Pool(processes = Use_Cores)
         Result = pool.map(Find_Minority_Group_Overlaps, Inds)
@@ -58,7 +53,7 @@ def Find_Minority_Group_Overlaps(Ind):
 ## point should be changed from the more common state to the less common state. 
 def Parallel_RG_Calc_ES_Info(Cell_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores):
     # Append the feature Ind to the Reference_Gene_Minority_Group_Overlaps matrix so that each core knows which RG it is looking at.
-    Feature_Inds = np.arange(Feature_Partion_IDs.shape[0])
+    Feature_Inds = np.arange(Gene_Cardinality)
     Pass_Info_To_Cores = np.concatenate((Feature_Inds.reshape(1,Feature_Inds.shape[0]),Reference_Gene_Minority_Group_Overlaps))
     Pass_Info_To_Cores = np.transpose(Pass_Info_To_Cores)
     # Parrallel calculate information gains matrix
@@ -90,9 +85,6 @@ def RG_Calc_ES_Info(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
         with np.errstate(invalid='ignore'):
             Information_Gains, Split_Weights, Split_Directions, Split_Permute_Entropies, Max_Permuation_Entropies, Max_Entropy_Permutation, Min_Entropy_ID_2 = Calculate_RG_Sort_Values(Feature_Inds,Cell_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps)
         ## Calculate Divergence Information
-        # Extract the Sample IDs of the less common state for the Reference Gene
-        Reference_Gene_1 = Feature_Partion_IDs[Feature_Inds]
-        Ref_Gene_Group1_Cardinality = Reference_Gene_1.shape[0]
         ## Sort Into Minority Group Divergences
         # Identify features whose minority group sorts into the minority group of the RG
         Sort_Into_Divergence_Inds = np.where(np.logical_and(np.isnan(Permutables) == 0,Split_Directions == 1))[0]
@@ -119,7 +111,9 @@ def RG_Calc_ES_Info(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
         RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
         # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
         # Null these data points by setting all overlaps to 0.
-        Sort_Into_Query_Genes[:,np.where(RG_QG_Divergences < 0)[0]] = 0 
+        Uninformative_Genes = np.where(RG_QG_Divergences < 0)[0]
+        Informative_Genes = np.where(RG_QG_Divergences > 0)[0]
+        Sort_Into_Query_Genes[:,Uninformative_Genes] = 0 
         # Mutiply the diverging cells by their average divergence and sum all the divergences for each RG/QG pair of each cell, to get a total
         # divergence for each cell.
         Ref_Sort_Into_Cell_Divergences = np.sum((Sort_Into_Query_Genes*RG_QG_Divergences),axis=1)
@@ -222,7 +216,7 @@ def Calc_RG_Entropies(x,Group1_Cardinality,Group2_Cardinality,Permutables):
 ## that consistently overlap with expression states of the RG arrangments that are inconsistent with the sort direction of the ES curve. If a QG points
 ## consistently diverges from the structure in this way, the point should be changed from the less common state to the more common state of the QG. 
 def Parallel_QG_Calc_ES_Info(Cell_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores):
-    Feature_Inds = np.arange(Feature_Partion_IDs.shape[0])
+    Feature_Inds = np.arange(Gene_Cardinality)
     Pass_Info_To_Cores = np.concatenate((Feature_Inds.reshape(1,Feature_Inds.shape[0]),Reference_Gene_Minority_Group_Overlaps))
     Pass_Info_To_Cores = np.transpose(Pass_Info_To_Cores)
     # Parrallel calculate information gains matrix
@@ -255,9 +249,6 @@ def QG_Calc_ES_Info(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
         with np.errstate(invalid='ignore'):
             Information_Gains, Split_Weights, Split_Directions, Split_Permute_Entropies, Max_Permuation_Entropies, Max_Entropy_Permutation, Min_Entropy_ID_2 = Calculate_QG_Sort_Values(Feature_Inds,Cell_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps)
         ## Calculate Divergence Information
-        # Extract the Sample IDs of the less common state for the Query Gene
-        Query_Gene_1 = Feature_Partion_IDs[Feature_Inds]
-        Query_Gene_Group1_Cardinality = Query_Gene_1.shape[0]
         ## Sort Out Of Minority Group Divergences
         # Identify features where the minority state of the QG sorts into the majority state of the RG
         Sort_Out_Of_Divergence_Inds = np.where(np.logical_and(np.isnan(Permutables) == 0,Split_Directions == -1))[0] 
@@ -285,7 +276,9 @@ def QG_Calc_ES_Info(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
         RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
         # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
         # Null these data points by setting all overlaps to 0.
-        Sort_Out_Of_Query_Genes[:,np.where(RG_QG_Divergences < 0)[0]] = 0
+        Uninformative_Genes = np.where(RG_QG_Divergences < 0)[0]
+        Informative_Genes = np.where(RG_QG_Divergences > 0)[0]
+        Sort_Out_Of_Query_Genes[:,Uninformative_Genes] = 0 
         # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
         # divergence for each cell.
         Ref_Sort_Out_Of_Cell_Divergences = np.sum((Sort_Out_Of_Query_Genes*RG_QG_Divergences),axis=1)
@@ -385,17 +378,24 @@ def Calc_QG_Entropies(x,Group1_Cardinality,Group2_Cardinality,Permutable):
     return Entropy
 
 
-def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cut_Off = 0.99, Use_Cores=(multiprocessing.cpu_count()-2), Num_Cycles = 1, Save_Step_Plots = 0):
+def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_Cut_Off = 0.99, Use_Cores=(multiprocessing.cpu_count()-2), Num_Cycles = 1, Save_Step_Plots = 0):
+    # Define data dimensions
+    global Cell_Cardinality
+    Cell_Cardinality = Binarised_Input_Matrix.shape[0]
+    global Gene_Cardinality
+    Gene_Cardinality = Binarised_Input_Matrix.shape[1]
     # Track what cycle FFAVES is on.
     Imputation_Cycle = 1
-    print("Number of cells: " + str(Binarised_Input_Matrix.shape[0]))
-    print("Number of genes: " + str(Binarised_Input_Matrix.shape[1]))
-    Track_Percentage_Imputation = np.zeros(Num_Cycles+1)
+    print("Number of cells: " + str(Cell_Cardinality))
+    print("Number of genes: " + str(Gene_Cardinality))
+    Track_Percentage_Imputation = np.zeros((3,Num_Cycles+1))
     Track_Imputations = [[]] * (Num_Cycles + 1)
     while Imputation_Cycle <= Num_Cycles:
-        print("Cycle Number " + str(Imputation_Cycle))
         if Imputation_Cycle > 1:
             print("Percentage of data suggested for imputation: " + str(np.round((Track_Imputations[Imputation_Cycle-1][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")   
+            print("Percentage of data suggested as false negatives: " + str(np.round((np.sum(Binarised_Input_Matrix[Track_Imputations[Imputation_Cycle-1]] == 0)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
+            print("Percentage of data suggested as false positives: " + str(np.round((np.sum(Binarised_Input_Matrix[Track_Imputations[Imputation_Cycle-1]] == 1)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
+        print("Cycle Number " + str(Imputation_Cycle))
         print("Step 1: Identifying unreliable data points.")
         print('Identifying Sort Info')        
         # Set up Minority_Group_Matrix
@@ -404,7 +404,7 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
         # Convert suggested imputation points to correct state.
         Suggested_Impute_Inds = Track_Imputations[Imputation_Cycle-1]
         Minority_Group_Matrix[Suggested_Impute_Inds] = (Minority_Group_Matrix[Suggested_Impute_Inds] - 1) * -1         
-        # Create Feature_Partion_IDs,Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
+        # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
         Permutables, Switch_State_Inidicies = Find_Partitions(Minority_Group_Matrix)
         # Switch Minority/Majority states to 0/1 where necessary.
         Switch_State_Indicie_Inds = np.where(Switch_State_Inidicies == 1)[0]
@@ -412,7 +412,6 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
         # Calculate minority group overlap matrix
         if __name__ == "__main__":     
             Reference_Gene_Minority_Group_Overlaps = Parallel_Find_Minority_Group_Overlaps(Use_Cores)
-        Cell_Cardinality = Minority_Group_Matrix.shape[0]
         Permutables[Permutables < Min_Clust_Size] = np.nan
         print("Calculating Divergence Matricies")
         if __name__ == "__main__":
@@ -476,7 +475,7 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
             plt.close() 
         print("Step 2: Identifying data points for imputation.")
         print('Identifying Sort Info')
-        # Create Feature_Partion_IDs,Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
+        # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
         Permutables, Switch_State_Inidicies = Find_Partitions(Minority_Group_Matrix)
         # Switch Minority/Majority states to 0/1 where necessary. 
         Switch_State_Indicie_Inds = np.where(Switch_State_Inidicies == 1)[0]
@@ -484,11 +483,20 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
         # Calculate minority group overlap matrix
         if __name__ == "__main__":
             Reference_Gene_Minority_Group_Overlaps = Parallel_Find_Minority_Group_Overlaps(Use_Cores)
-        Cell_Cardinality = Minority_Group_Matrix.shape[0]
         Permutables[Permutables < Min_Clust_Size] = np.nan
         print("Calculating Divergence Matricies")
+        ##### INVESTIGATING THRESHOLDS
+        np.save("Reference_Gene_Minority_Group_Overlaps.npy",Reference_Gene_Minority_Group_Overlaps)
+        np.save("Minority_Group_Matrix.npy",Minority_Group_Matrix)
+        np.save("Permutables.npy",Permutables)
+        ##### INVESTIGATING THRESHOLDS       
         if __name__ == "__main__":
             Sort_Into_Cell_Divergences, Information_Gains_Matrix, Weights_Matrix = Parallel_RG_Calc_ES_Info(Cell_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)                    
+        ##### INVESTIGATING THRESHOLDS
+        np.save("Sort_Into_Cell_Divergences.npy",Sort_Into_Cell_Divergences)        
+        np.save("Information_Gains_Matrix.npy",Information_Gains_Matrix)
+        np.save("Weights_Matrix.npy",Weights_Matrix)
+        ##### INVESTIGATING THRESHOLDS
         if Save_Step_Plots == 2:
             plt.figure()
             plt.imshow(Sort_Into_Cell_Divergences.T, cmap='seismic', interpolation='nearest')
@@ -525,6 +533,9 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
         Use_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
         Step_2_Flat_Use_Inds = np.ravel_multi_index(Use_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
         Minority_Group_Matrix[Use_Inds] = (Minority_Group_Matrix[Use_Inds] - 1) * -1
+        ##### INVESTIGATING THRESHOLDS
+        np.save("Track_Imputations.npy",np.asarray(Use_Inds,dtype=object))
+        ##### INVESTIGATING THRESHOLDS
         if Save_Step_Plots == 2:
             plt.figure()
             Plot_Minority_Group_Matrix = copy.copy(Minority_Group_Matrix)
@@ -537,10 +548,10 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
             plt.xlabel('Cells')
             plt.ylabel('Genes')
             plt.savefig((Title + ".svg"), format='svg', dpi=1200)
-            plt.close()           
+            plt.close()   
         print("Step 3: Cleaning up untrustworthy imputed values.")
         print('Identifying Sort Info')
-        # Create Feature_Partion_IDs,Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
+        # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
         Permutables, Switch_State_Inidicies = Find_Partitions(Minority_Group_Matrix)
         # Switch Minority/Majority states to 0/1 where necessary.
         Switch_State_Indicie_Inds = np.where(Switch_State_Inidicies == 1)[0]
@@ -548,7 +559,6 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
         # Calculate minority group overlap matrix
         if __name__ == "__main__":
             Reference_Gene_Minority_Group_Overlaps = Parallel_Find_Minority_Group_Overlaps(Use_Cores)
-        Cell_Cardinality = Minority_Group_Matrix.shape[0]
         Permutables[Permutables < Min_Clust_Size] = np.nan
         print("Calculating Divergence Matricies")
         if __name__ == "__main__":
@@ -561,13 +571,13 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
         # Identify points that diverge in a statistically significant way
         Pass_Threshold = np.where(halfnorm.cdf(zscores) >= Divergences_Significance_Cut_Off)[0]
         Use_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
-        Step_3_Flat_Use_Inds = np.ravel_multi_index(Use_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
-        Ignore_Imputations = np.where(np.isin(Step_2_Flat_Use_Inds,Step_3_Flat_Use_Inds))[0]
-        Impute_Inds = np.delete(Step_2_Flat_Use_Inds,Ignore_Imputations)
         if Imputation_Cycle > 1:
-            All_Impute_Inds = np.append(np.ravel_multi_index(Track_Imputations[Imputation_Cycle-1], (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1])), Impute_Inds)
+            All_Impute_Inds = np.unique(np.append(np.ravel_multi_index(Track_Imputations[Imputation_Cycle-1], (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1])), Step_2_Flat_Use_Inds))
         else:
-            All_Impute_Inds = Impute_Inds
+            All_Impute_Inds = Step_2_Flat_Use_Inds
+        Step_3_Flat_Use_Inds = np.ravel_multi_index(Use_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
+        Ignore_Imputations = np.where(np.isin(All_Impute_Inds,Step_3_Flat_Use_Inds))[0]
+        All_Impute_Inds = np.delete(All_Impute_Inds,Ignore_Imputations)
         All_Impute_Inds = np.unravel_index(All_Impute_Inds,(Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
         Track_Imputations[Imputation_Cycle] = All_Impute_Inds
         if Save_Step_Plots == 2:
@@ -584,15 +594,22 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size=5, Divergences_Significance_Cu
             plt.savefig((Title + ".svg"), format='svg', dpi=1200)
             plt.close()         
         print("Finished")
-        Track_Percentage_Imputation[Imputation_Cycle] = (Track_Imputations[Imputation_Cycle][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
+        Track_Percentage_Imputation[0,Imputation_Cycle] = (Track_Imputations[Imputation_Cycle][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
+        Track_Percentage_Imputation[1,Imputation_Cycle] = (np.sum(Binarised_Input_Matrix[Track_Imputations[Imputation_Cycle]] == 0)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
+        Track_Percentage_Imputation[2,Imputation_Cycle] = (np.sum(Binarised_Input_Matrix[Track_Imputations[Imputation_Cycle]] == 1)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
         print("Saving Track_Imputations")
-        np.save("Track_Imputations.npy",np.asarray(Track_Imputations,dtype=object))
-        np.save("Information_Gains_Matrix.npy",Information_Gains_Matrix)
-        np.save("Weights_Matrix.npy",Weights_Matrix)
+        #np.save("Track_Imputations.npy",np.asarray(Track_Imputations,dtype=object))
+        #np.save("Information_Gains_Matrix.npy",Information_Gains_Matrix)
+        #np.save("Weights_Matrix.npy",Weights_Matrix)
         Imputation_Cycle = Imputation_Cycle + 1
         np.save("Track_Percentage_Imputation.npy",Track_Percentage_Imputation)
     print("Percentage of data suggested for imputation: " + str(np.round((Track_Imputations[Imputation_Cycle-1][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")      
     return Track_Imputations, Track_Percentage_Imputation, Information_Gains_Matrix, Weights_Matrix
+
+
+
+
+
 
 
 
