@@ -426,7 +426,7 @@ def Calc_QG_Entropies(x,Group1_Cardinality,Group2_Cardinality,Permutable):
 #### Here we have additional functions to help with analysis of the results ####
 
 
-def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Track_Imputations, Min_Clust_Size = 5, Chosen_Cycle = -1, Use_Cores = -1, Auto_Save = 1):
+def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Suggested_Impute_Inds, Min_Clust_Size = 5, Use_Cores = -1, Auto_Save = 1):
     # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -439,7 +439,6 @@ def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Track_Imputations, Min_C
     global Minority_Group_Matrix
     Minority_Group_Matrix = copy.copy(Binarised_Input_Matrix)
     # Convert suggested imputation points to correct state.
-    Suggested_Impute_Inds = Track_Imputations[Chosen_Cycle]
     Minority_Group_Matrix[Suggested_Impute_Inds] = (Minority_Group_Matrix[Suggested_Impute_Inds] - 1) * -1 
     # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
     Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix)
@@ -501,7 +500,7 @@ def Fixed_QG_Pos_SD_ES_Info(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
 #####
 
 
-def Parallel_Optimise_Discretisation_Thresholds(Binarised_Input_Matrix,Track_Imputations,Chosen_Cycle = -1,Use_Cores=-1,Auto_Save=1):
+def Parallel_Optimise_Discretisation_Thresholds(Binarised_Input_Matrix,Suggested_Impute_Inds,Use_Cores=-1,Auto_Save=1):
      # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -513,7 +512,6 @@ def Parallel_Optimise_Discretisation_Thresholds(Binarised_Input_Matrix,Track_Imp
     # Set up Minority_Group_Matrix
     Imputed_Matrix = copy.copy(Binarised_Input_Matrix)
     # Convert suggested imputation points to correct state.
-    Suggested_Impute_Inds = Track_Imputations[Chosen_Cycle]
     Imputed_Matrix[Suggested_Impute_Inds] = np.nan
     Paired = [[]] * Binarised_Input_Matrix.shape[1]
     for i in np.arange(Binarised_Input_Matrix.shape[1]):
@@ -524,11 +522,12 @@ def Parallel_Optimise_Discretisation_Thresholds(Binarised_Input_Matrix,Track_Imp
     pool.join()
     Result = np.asarray(Result,dtype=object)
     Thresholds = Result[:,0].astype("f")
-    Imputations = np.stack(Result[:,1],axis=1)
+    Optimised_Imputations = np.stack(Result[:,1],axis=1)
+    Optimised_Imputations = np.where(Imputations == 1)
     if Auto_Save == 1:
         np.save("Thresholds.npy",Thresholds)
-        np.save("Imputations.npy",Imputations)
-    return Thresholds, Imputations
+        np.save("Optimised_Imputations.npy",Optimised_Imputations)
+    return Thresholds, Optimised_Imputations
 
 
 def Optimise_Discretisation_Thresholds(Paired):
