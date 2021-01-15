@@ -167,7 +167,7 @@ def FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores):
 
 ### Find the partition basis for each reference feature.
 def Find_Permutations(Minority_Group_Matrix):
-    Permutables = np.sum(Minority_Group_Matrix,axis=0)
+    Permutables = np.sum(Minority_Group_Matrix,axis=0).astype("f")
     Switch_State_Inidicies = np.where(Permutables >= (Cell_Cardinality/2))[0]
     Permutables[Switch_State_Inidicies] = Cell_Cardinality - Permutables[Switch_State_Inidicies]  
     return Permutables, Switch_State_Inidicies
