@@ -501,7 +501,7 @@ def Fixed_QG_Pos_SD_ES_Info(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
 #####
 
 
-def Parallel_Optimise_Discretisation_Thresholds(Binarised_Input_Matrix,Track_Imputations,Chosen_Cycle = -1,Use_Cores=-1):
+def Parallel_Optimise_Discretisation_Thresholds(Binarised_Input_Matrix,Track_Imputations,Chosen_Cycle = -1,Use_Cores=-1,Auto_Save=1):
      # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -525,6 +525,9 @@ def Parallel_Optimise_Discretisation_Thresholds(Binarised_Input_Matrix,Track_Imp
     Result = np.asarray(Result,dtype=object)
     Thresholds = Result[:,0].astype("f")
     Imputations = np.stack(Result[:,1],axis=1)
+    if Auto_Save == 1:
+        np.save("Thresholds.npy",Thresholds)
+        np.save("Imputations.npy",Imputations)
     return Thresholds, Imputations
 
 
