@@ -523,7 +523,7 @@ def Parallel_Optimise_Discretisation_Thresholds(Binarised_Input_Matrix,Suggested
     Result = np.asarray(Result,dtype=object)
     Thresholds = Result[:,0].astype("f")
     Optimised_Imputations = np.stack(Result[:,1],axis=1)
-    Optimised_Imputations = np.where(Imputations == 1)
+    Optimised_Imputations = np.where(Optimised_Imputations == 1)
     if Auto_Save == 1:
         np.save("Thresholds.npy",Thresholds)
         np.save("Optimised_Imputations.npy",Optimised_Imputations)
