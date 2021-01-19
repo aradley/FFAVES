@@ -426,7 +426,7 @@ def Calc_QG_Entropies(x,Group1_Cardinality,Group2_Cardinality,Permutable):
 #### Here we have additional functions to help with analysis of the results ####
 
 
-def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Suggested_Impute_Inds, Min_Clust_Size = 5, Use_Cores = -1, Auto_Save = 1):
+def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Suggested_Impute_Inds, Min_Clust_Size = 5, Divergences_Significance_Cut_Off = 0.99, Use_Cores = -1, Auto_Save = 1):
     # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -442,6 +442,11 @@ def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Suggested_Impute_Inds, M
     Gene_Cardinality = Minority_Group_Matrix.shape[1]
     # Convert suggested imputation points to correct state.
     Minority_Group_Matrix[Suggested_Impute_Inds] = (Minority_Group_Matrix[Suggested_Impute_Inds] - 1) * -1 
+    ### Step 1 of FFAVES is to identify and temporarily remove spurious Minority Group expression states
+    Spurious_Minority_State_Points, Cell_Uncertainties = FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
+    # Clean up data by switching states of spurious points
+    Minority_Group_Matrix[Spurious_Minority_State_Points] = (Minority_Group_Matrix[Spurious_Minority_State_Points] - 1) * -1
+    # Now use just calculate the Information Gains and Weights Matricies based on the denoised data.
     # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
     Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
     # Switch Minority/Majority states to 0/1 where necessary.
@@ -449,13 +454,12 @@ def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Suggested_Impute_Inds, M
     # Calculate minority group overlap matrix 
     Reference_Gene_Minority_Group_Overlaps = Parallel_Find_Minority_Group_Overlaps(Use_Cores,Gene_Cardinality)
     Permutables[Permutables < Min_Clust_Size] = np.nan
-    print("Step 1: Identifying unreliable data points.")
-    print("Calculating Divergence Matricies")   
+    print("Calculating Information Gains matrix and Split Weights matrix from reduced noise data")   
     Information_Gains, Split_Weights = Parallel_Fixed_QG_Pos_SD_ES_Info(Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)
     if Auto_Save == 1:
         np.save("Information_Gains.npy",Information_Gains)
         np.save("Split_Weights.npy",Split_Weights)
-    return Information_Gains, Split_Weights
+    return Information_Gains, Split_Weights, Spurious_Minority_State_Points
 
 
 def Parallel_Fixed_QG_Pos_SD_ES_Info(Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores):
