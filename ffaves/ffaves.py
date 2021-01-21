@@ -210,8 +210,6 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
         Gene_States = Minority_Group_Matrix[:,Feature_Inds]
         # Remove the Query Gene ind from the data vector
         Reference_Gene_Minority_Group_Overlaps = np.delete(Pass_Info_To_Cores,0)
-        # Note which RG features cannot be used (probably because their minority group cardinality does not meet the Min_Clust_Size threshold)
-        Do_Not_Use = np.where(np.isnan(Permutables))[0]   
         if Error_Type == 1: # Caluclate divergences for each Type 1 (false positive) error scenarios.
             ##### Fixed RG Caclulations #####
             # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
@@ -238,7 +236,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             ### Type 1 Error Scenario 1) Fixed RG, SD = +1 and G1 <= G2 ###
             Scenario_1_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality <= Permutables))[0]
             Split_Direction = 1
-            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_RG_Sort_Values(1,Split_Direction,Max_Entropy_Permutation[Scenario_1_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_1_Inds],Min_Entropy_ID_1[Scenario_1_Inds],Min_Entropy_ID_2[Scenario_1_Inds],Split_Permute_Value[Scenario_1_Inds],Do_Not_Use)
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_RG_Sort_Values(1,Split_Direction,Max_Entropy_Permutation[Scenario_1_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_1_Inds],Min_Entropy_ID_1[Scenario_1_Inds],Min_Entropy_ID_2[Scenario_1_Inds],Split_Permute_Value[Scenario_1_Inds])
             ## Calculate Divergence Information
             Sort_Genes = Minority_Group_Matrix[:,Scenario_1_Inds]
             Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
@@ -270,7 +268,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             ### Type 1 Error Scenario 2) Fixed RG, SD = -1 and G1 > G2 ###
             Scenario_2_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality > Permutables))[0]
             Split_Direction = -1
-            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_RG_Sort_Values(1,Split_Direction,Max_Entropy_Permutation[Scenario_2_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_2_Inds],Min_Entropy_ID_1[Scenario_2_Inds],Min_Entropy_ID_2[Scenario_2_Inds],Split_Permute_Value[Scenario_2_Inds],Do_Not_Use)
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_RG_Sort_Values(1,Split_Direction,Max_Entropy_Permutation[Scenario_2_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_2_Inds],Min_Entropy_ID_1[Scenario_2_Inds],Min_Entropy_ID_2[Scenario_2_Inds],Split_Permute_Value[Scenario_2_Inds])
             ## Calculate Divergence Information
             Sort_Genes = Minority_Group_Matrix[:,Scenario_2_Inds]
             Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
@@ -302,7 +300,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             ### Type 1 Error Scenario 3) Fixed RG, SD = -1 and G1 <= G2 ###
             Scenario_3_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality <= Permutables))[0]
             Split_Direction = -1
-            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_RG_Sort_Values(1,Split_Direction,Max_Entropy_Permutation[Scenario_3_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_3_Inds],Min_Entropy_ID_1[Scenario_3_Inds],Min_Entropy_ID_2[Scenario_3_Inds],Split_Permute_Value[Scenario_3_Inds],Do_Not_Use)
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_RG_Sort_Values(1,Split_Direction,Max_Entropy_Permutation[Scenario_3_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_3_Inds],Min_Entropy_ID_1[Scenario_3_Inds],Min_Entropy_ID_2[Scenario_3_Inds],Split_Permute_Value[Scenario_3_Inds])
             ## Calculate Divergence Information
             Sort_Genes = Minority_Group_Matrix[:,Scenario_3_Inds]
             Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
@@ -349,7 +347,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             ### Type 1 Error Scenario 4) Fixed QG, SD = 1 and G1 <= G2 ###
             Scenario_4_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality > Permutable))[0]
             Split_Direction = 1
-            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_4_Inds],Minority_Group_Cardinality[Scenario_4_Inds],Majority_Group_Cardinality[Scenario_4_Inds],Min_Entropy_ID_1[Scenario_4_Inds],Min_Entropy_ID_2[Scenario_4_Inds],Split_Permute_Value[Scenario_4_Inds],Do_Not_Use)
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_4_Inds],Minority_Group_Cardinality[Scenario_4_Inds],Majority_Group_Cardinality[Scenario_4_Inds],Min_Entropy_ID_1[Scenario_4_Inds],Min_Entropy_ID_2[Scenario_4_Inds],Split_Permute_Value[Scenario_4_Inds])
             ## Calculate Divergence Information
             Sort_Genes = Minority_Group_Matrix[:,Scenario_4_Inds]
             Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
@@ -381,7 +379,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             ### Type 1 Error Scenario 5) Fixed QG, SD = -1 and G1 <= G2 ###
             Scenario_5_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality > Permutable))[0]
             Split_Direction = -1
-            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_5_Inds],Minority_Group_Cardinality[Scenario_5_Inds],Majority_Group_Cardinality[Scenario_5_Inds],Min_Entropy_ID_1[Scenario_5_Inds],Min_Entropy_ID_2[Scenario_5_Inds],Split_Permute_Value[Scenario_5_Inds],Do_Not_Use)
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_5_Inds],Minority_Group_Cardinality[Scenario_5_Inds],Majority_Group_Cardinality[Scenario_5_Inds],Min_Entropy_ID_1[Scenario_5_Inds],Min_Entropy_ID_2[Scenario_5_Inds],Split_Permute_Value[Scenario_5_Inds])
             ## Calculate Divergence Information
             Sort_Genes = Minority_Group_Matrix[:,Scenario_5_Inds]
             Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
@@ -413,7 +411,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             ### Type 1 Error Scenario 6) Fixed QG, SD = -1 and G1 <= G2 ###
             Scenario_6_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality <= Permutable))[0]
             Split_Direction = -1
-            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_6_Inds],Minority_Group_Cardinality[Scenario_6_Inds],Majority_Group_Cardinality[Scenario_6_Inds],Min_Entropy_ID_1[Scenario_6_Inds],Min_Entropy_ID_2[Scenario_6_Inds],Split_Permute_Value[Scenario_6_Inds],Do_Not_Use)
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_6_Inds],Minority_Group_Cardinality[Scenario_6_Inds],Majority_Group_Cardinality[Scenario_6_Inds],Min_Entropy_ID_1[Scenario_6_Inds],Min_Entropy_ID_2[Scenario_6_Inds],Split_Permute_Value[Scenario_6_Inds])
             ## Calculate Divergence Information
             Sort_Genes = Minority_Group_Matrix[:,Scenario_6_Inds]
             Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
@@ -471,7 +469,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             ### Type 2 Error Scenario 1) Fixed RG, SD = +1 and G1 > G2 ###
             Scenario_1_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality > Permutables))[0]
             Split_Direction = 1
-            Split_Permute_Entropies, Max_Permuation_Entropies, Minimum_Entropies = Calculate_Fixed_RG_Sort_Values(2,Split_Direction,Max_Entropy_Permutation[Scenario_1_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_1_Inds],Min_Entropy_ID_1[Scenario_1_Inds],Min_Entropy_ID_2[Scenario_1_Inds],Split_Permute_Value[Scenario_1_Inds],Do_Not_Use)
+            Split_Permute_Entropies, Max_Permuation_Entropies, Minimum_Entropies = Calculate_Fixed_RG_Sort_Values(2,Split_Direction,Max_Entropy_Permutation[Scenario_1_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_1_Inds],Min_Entropy_ID_1[Scenario_1_Inds],Min_Entropy_ID_2[Scenario_1_Inds],Split_Permute_Value[Scenario_1_Inds])
             ## Calculate Divergence Information
             Sort_Genes = Minority_Group_Matrix[:,Scenario_1_Inds]
             Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
@@ -517,7 +515,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             ### Type 2 Error Scenario 2) Fixed RG, SD = +1 and G1 <= G2 ###
             Scenario_2_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality < Permutable))[0]
             Split_Direction = 1
-            Split_Permute_Entropies, Max_Permuation_Entropies,Minimum_Entropies = Calculate_Fixed_QG_Sort_Values(2,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_2_Inds],Minority_Group_Cardinality[Scenario_2_Inds],Majority_Group_Cardinality[Scenario_2_Inds],Min_Entropy_ID_1[Scenario_2_Inds],Min_Entropy_ID_2[Scenario_2_Inds],Split_Permute_Value[Scenario_2_Inds],Do_Not_Use)
+            Split_Permute_Entropies, Max_Permuation_Entropies,Minimum_Entropies = Calculate_Fixed_QG_Sort_Values(2,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_2_Inds],Minority_Group_Cardinality[Scenario_2_Inds],Majority_Group_Cardinality[Scenario_2_Inds],Min_Entropy_ID_1[Scenario_2_Inds],Min_Entropy_ID_2[Scenario_2_Inds],Split_Permute_Value[Scenario_2_Inds])
             ## Calculate Divergence Information
             Sort_Genes = Minority_Group_Matrix[:,Scenario_2_Inds]
             Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
@@ -553,21 +551,17 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
         return np.zeros(Cell_Cardinality)
 
 
-def Calculate_Fixed_QG_Sort_Values(Outputs,Split_Direction,Permutable,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value,Do_Not_Use):
+def Calculate_Fixed_QG_Sort_Values(Outputs,Split_Direction,Permutable,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value):
     # Calculate critical points on the ES curve
     Max_Permuation_Entropies = Calc_QG_Entropies(Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutable)
-    Max_Permuation_Entropies[Do_Not_Use] = np.nan
     if Split_Direction == -1:
         # The minimum entropy if none of the QG minority states are in the RG minority group.
         Minimum_Entropies = Calc_QG_Entropies(Min_Entropy_ID_1,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutable)
-        Minimum_Entropies[Do_Not_Use] = np.nan
     if Split_Direction == 1:
         # The minimum entropy if the RG minority group has as many of the QG minority state samples in it as possible.
         Minimum_Entropies = Calc_QG_Entropies(Min_Entropy_ID_2,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutable)
-        Minimum_Entropies[Do_Not_Use] = np.nan
     # The entropy of the arrangment observed in the data set.
     Split_Permute_Entropies = Calc_QG_Entropies(Split_Permute_Value,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutable)
-    Split_Permute_Entropies[Do_Not_Use] = np.nan
     if Outputs == 1:
         return Split_Permute_Entropies, Max_Permuation_Entropies
     if Outputs == 2:
@@ -607,21 +601,17 @@ def Calc_QG_Entropies(x,Group1_Cardinality,Group2_Cardinality,Permutable):
     return Entropy
 
 
-def Calculate_Fixed_RG_Sort_Values(Outputs,Split_Direction,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value,Do_Not_Use):
+def Calculate_Fixed_RG_Sort_Values(Outputs,Split_Direction,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value):
     # Calculate critical points on the ES curve
     Max_Permuation_Entropies = Calc_RG_Entropies(Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables)
-    Max_Permuation_Entropies[Do_Not_Use] = np.nan
     if Split_Direction == -1:
         # The minimum entropy if none of the QG minority states are in the RG minority group.
         Minimum_Entropies = Calc_RG_Entropies(Min_Entropy_ID_1,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables)
-        Minimum_Entropies[Do_Not_Use] = np.nan
     if Split_Direction == 1:
         # The minimum entropy if the RG minority group has as many of the QG minority state samples in it as possible.
         Minimum_Entropies = Calc_RG_Entropies(Min_Entropy_ID_2,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables)
-        Minimum_Entropies[Do_Not_Use] = np.nan
     # The entropy of the arrangment observed in the data set.
     Split_Permute_Entropies = Calc_RG_Entropies(Split_Permute_Value,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables)
-    Split_Permute_Entropies[Do_Not_Use] = np.nan
     if Outputs == 1:
         return Split_Permute_Entropies, Max_Permuation_Entropies
     if Outputs == 2:
@@ -714,56 +704,56 @@ def Parallel_Calculate_ES_Matricies(Cell_Cardinality,Gene_Cardinality,Permutable
     # Retreive Information_Gains and put the features back in the original feature ordering.
     Information_Gains = Results[:,0]
     Information_Gains[np.isnan(Information_Gains)] = 0
+    Information_Gains[np.isinf(Information_Gains)] = 0
     # Retreive Informative_Genes and put the features back in the original feature ordering.
     Split_Weights = Results[:,1]
     Split_Weights[np.isnan(Split_Weights)] = 0
+    Split_Weights[np.isinf(Split_Weights)] = 0
     return Information_Gains, Split_Weights
 
 
 def Calculate_ES_Matricies(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
-    # Extract which gene calculations are centred around
-    Feature_Inds = int(Pass_Info_To_Cores[0])
-    # Remove the Query Gene ind from the data vector
-    Reference_Gene_Minority_Group_Overlaps = np.delete(Pass_Info_To_Cores,0)
-    Results = []
-    if np.isnan(Permutables[Feature_Inds]) == 0:
-        # Note which RG features cannot be used (probably because their minority group cardinality does not meet the Min_Clust_Size threshold)
-        Do_Not_Use = np.where(np.isnan(Permutables))[0]
-        ##### Fixed RG Caclulations #####
-        # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
-        Minority_Group_Cardinality = Permutables[Feature_Inds]
-        Majority_Group_Cardinality = Cell_Cardinality - Minority_Group_Cardinality
-        #Permutable = Permutables
-        # Maximum entropy of the system is identified from the derivative of the Entropy Sorting Equation (ESQ)
-        Max_Entropy_Permutation = (Minority_Group_Cardinality * Permutables)/(Minority_Group_Cardinality + Majority_Group_Cardinality)
-        # The maximum and minimum points of the ESQ are identified from the boundaries of the ESQ curve.
-        Min_Entropy_ID_1 = np.zeros(Permutables.shape[0])
-        Min_Entropy_ID_2 = copy.copy(Permutables)
-        Check_Fits_Group_1 = Minority_Group_Cardinality - Min_Entropy_ID_2
-        # If the minority group of the QG is larger than the minority group of the RG then the boundary point is the cardinality of the RG minority group.
-        Min_Entropy_ID_2[np.where(Check_Fits_Group_1 < 0)[0]] = Minority_Group_Cardinality
-        # Split_Permute_Value is the overlap of minority states that we actually observe in the data.
-        Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
-        # Identify Split Direction (whether the observed arrangment is sorting towards the global minimum entropy or not. I.e. is the QG sorting into the
-        # minority or majority group of the RG.)
-        Sort_Out_Of_Inds = np.where((Split_Permute_Value - Max_Entropy_Permutation) < 0)[0]
-        # Assign Split Directions for each QG/RG pair to a vector.
-        Split_Directions = np.repeat(1,Permutables.shape[0])
-        Split_Directions[Sort_Out_Of_Inds] = -1     
-        Information_Gains, Split_Weights = Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value,Do_Not_Use)
-    else:
-        Information_Gains = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
-        Split_Weights = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
-        Split_Directions = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
-    Results.append(Information_Gains*Split_Directions)
-    Results.append(Split_Weights)
+    with np.errstate(divide='ignore',invalid='ignore'):
+        # Extract which gene calculations are centred around
+        Feature_Inds = int(Pass_Info_To_Cores[0])
+        # Remove the Query Gene ind from the data vector
+        Reference_Gene_Minority_Group_Overlaps = np.delete(Pass_Info_To_Cores,0)
+        Results = []
+        if np.isnan(Permutables[Feature_Inds]) == 0:
+            ##### Fixed RG Caclulations #####
+            # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
+            Minority_Group_Cardinality = Permutables[Feature_Inds]
+            Majority_Group_Cardinality = Cell_Cardinality - Minority_Group_Cardinality
+            #Permutable = Permutables
+            # Maximum entropy of the system is identified from the derivative of the Entropy Sorting Equation (ESQ)
+            Max_Entropy_Permutation = (Minority_Group_Cardinality * Permutables)/(Minority_Group_Cardinality + Majority_Group_Cardinality)
+            # The maximum and minimum points of the ESQ are identified from the boundaries of the ESQ curve.
+            Min_Entropy_ID_1 = np.zeros(Permutables.shape[0])
+            Min_Entropy_ID_2 = copy.copy(Permutables)
+            Check_Fits_Group_1 = Minority_Group_Cardinality - Min_Entropy_ID_2
+            # If the minority group of the QG is larger than the minority group of the RG then the boundary point is the cardinality of the RG minority group.
+            Min_Entropy_ID_2[np.where(Check_Fits_Group_1 < 0)[0]] = Minority_Group_Cardinality
+            # Split_Permute_Value is the overlap of minority states that we actually observe in the data.
+            Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
+            # Identify Split Direction (whether the observed arrangment is sorting towards the global minimum entropy or not. I.e. is the QG sorting into the
+            # minority or majority group of the RG.)
+            Sort_Out_Of_Inds = np.where((Split_Permute_Value - Max_Entropy_Permutation) < 0)[0]
+            # Assign Split Directions for each QG/RG pair to a vector.
+            Split_Directions = np.repeat(1,Permutables.shape[0])
+            Split_Directions[Sort_Out_Of_Inds] = -1     
+            Information_Gains, Split_Weights = Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value)
+        else:
+            Information_Gains = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
+            Split_Weights = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
+            Split_Directions = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
+        Results.append(Information_Gains*Split_Directions)
+        Results.append(Split_Weights)
     return Results
 
 
-def Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value,Do_Not_Use):
+def Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value):
     # Calculate critical points on the ES curve
     Max_Permuation_Entropies = Calc_RG_Entropies(Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables)
-    Max_Permuation_Entropies[Do_Not_Use] = np.nan
     Sort_Into_Inds = np.where(Split_Directions == 1)[0]
     Sort_Out_Of_Inds = np.where(Split_Directions == -1)[0]
     if Sort_Into_Inds.shape[0] > 0:
@@ -775,10 +765,8 @@ def Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,
     Minimum_Entropies = np.zeros(Permutables.shape[0])
     Minimum_Entropies[Sort_Into_Inds] = Sort_Into_Minimum_Entropies
     Minimum_Entropies[Sort_Out_Of_Inds] = Sort_Out_Of_Minimum_Entropies
-    Minimum_Entropies[Do_Not_Use] = np.nan
     # The entropy of the arrangment observed in the data set.
     Split_Permute_Entropies = Calc_RG_Entropies(Split_Permute_Value,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables)
-    Split_Permute_Entropies[Do_Not_Use] = np.nan
     # Calculate ES parabola properties
     Max_Entropy_Differences = Max_Permuation_Entropies - Minimum_Entropies
     Entropy_Losses = Max_Permuation_Entropies - Split_Permute_Entropies
