@@ -704,47 +704,50 @@ def Parallel_Calculate_ES_Matricies(Cell_Cardinality,Gene_Cardinality,Permutable
     # Retreive Information_Gains and put the features back in the original feature ordering.
     Information_Gains = Results[:,0]
     Information_Gains[np.isnan(Information_Gains)] = 0
+    Information_Gains[np.isinf(Information_Gains)] = 0
     # Retreive Informative_Genes and put the features back in the original feature ordering.
     Split_Weights = Results[:,1]
     Split_Weights[np.isnan(Split_Weights)] = 0
+    Split_Weights[np.isinf(Split_Weights)] = 0
     return Information_Gains, Split_Weights
 
 
 def Calculate_ES_Matricies(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
-    # Extract which gene calculations are centred around
-    Feature_Inds = int(Pass_Info_To_Cores[0])
-    # Remove the Query Gene ind from the data vector
-    Reference_Gene_Minority_Group_Overlaps = np.delete(Pass_Info_To_Cores,0)
-    Results = []
-    if np.isnan(Permutables[Feature_Inds]) == 0:
-        ##### Fixed RG Caclulations #####
-        # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
-        Minority_Group_Cardinality = Permutables[Feature_Inds]
-        Majority_Group_Cardinality = Cell_Cardinality - Minority_Group_Cardinality
-        #Permutable = Permutables
-        # Maximum entropy of the system is identified from the derivative of the Entropy Sorting Equation (ESQ)
-        Max_Entropy_Permutation = (Minority_Group_Cardinality * Permutables)/(Minority_Group_Cardinality + Majority_Group_Cardinality)
-        # The maximum and minimum points of the ESQ are identified from the boundaries of the ESQ curve.
-        Min_Entropy_ID_1 = np.zeros(Permutables.shape[0])
-        Min_Entropy_ID_2 = copy.copy(Permutables)
-        Check_Fits_Group_1 = Minority_Group_Cardinality - Min_Entropy_ID_2
-        # If the minority group of the QG is larger than the minority group of the RG then the boundary point is the cardinality of the RG minority group.
-        Min_Entropy_ID_2[np.where(Check_Fits_Group_1 < 0)[0]] = Minority_Group_Cardinality
-        # Split_Permute_Value is the overlap of minority states that we actually observe in the data.
-        Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
-        # Identify Split Direction (whether the observed arrangment is sorting towards the global minimum entropy or not. I.e. is the QG sorting into the
-        # minority or majority group of the RG.)
-        Sort_Out_Of_Inds = np.where((Split_Permute_Value - Max_Entropy_Permutation) < 0)[0]
-        # Assign Split Directions for each QG/RG pair to a vector.
-        Split_Directions = np.repeat(1,Permutables.shape[0])
-        Split_Directions[Sort_Out_Of_Inds] = -1     
-        Information_Gains, Split_Weights = Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value)
-    else:
-        Information_Gains = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
-        Split_Weights = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
-        Split_Directions = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
-    Results.append(Information_Gains*Split_Directions)
-    Results.append(Split_Weights)
+    with np.errstate(divide='ignore',invalid='ignore'):
+        # Extract which gene calculations are centred around
+        Feature_Inds = int(Pass_Info_To_Cores[0])
+        # Remove the Query Gene ind from the data vector
+        Reference_Gene_Minority_Group_Overlaps = np.delete(Pass_Info_To_Cores,0)
+        Results = []
+        if np.isnan(Permutables[Feature_Inds]) == 0:
+            ##### Fixed RG Caclulations #####
+            # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
+            Minority_Group_Cardinality = Permutables[Feature_Inds]
+            Majority_Group_Cardinality = Cell_Cardinality - Minority_Group_Cardinality
+            #Permutable = Permutables
+            # Maximum entropy of the system is identified from the derivative of the Entropy Sorting Equation (ESQ)
+            Max_Entropy_Permutation = (Minority_Group_Cardinality * Permutables)/(Minority_Group_Cardinality + Majority_Group_Cardinality)
+            # The maximum and minimum points of the ESQ are identified from the boundaries of the ESQ curve.
+            Min_Entropy_ID_1 = np.zeros(Permutables.shape[0])
+            Min_Entropy_ID_2 = copy.copy(Permutables)
+            Check_Fits_Group_1 = Minority_Group_Cardinality - Min_Entropy_ID_2
+            # If the minority group of the QG is larger than the minority group of the RG then the boundary point is the cardinality of the RG minority group.
+            Min_Entropy_ID_2[np.where(Check_Fits_Group_1 < 0)[0]] = Minority_Group_Cardinality
+            # Split_Permute_Value is the overlap of minority states that we actually observe in the data.
+            Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
+            # Identify Split Direction (whether the observed arrangment is sorting towards the global minimum entropy or not. I.e. is the QG sorting into the
+            # minority or majority group of the RG.)
+            Sort_Out_Of_Inds = np.where((Split_Permute_Value - Max_Entropy_Permutation) < 0)[0]
+            # Assign Split Directions for each QG/RG pair to a vector.
+            Split_Directions = np.repeat(1,Permutables.shape[0])
+            Split_Directions[Sort_Out_Of_Inds] = -1     
+            Information_Gains, Split_Weights = Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value)
+        else:
+            Information_Gains = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
+            Split_Weights = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
+            Split_Directions = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
+        Results.append(Information_Gains*Split_Directions)
+        Results.append(Split_Weights)
     return Results
 
 
