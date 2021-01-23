@@ -33,59 +33,60 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
     print("Number of cells: " + str(Cell_Cardinality))
     print("Number of genes: " + str(Gene_Cardinality))
     Track_Percentage_Imputation = np.zeros((3,Num_Cycles+1))
-    Track_Imputations = [[]] * (Num_Cycles + 1)
+    Track_Type_2_Error_Inds = [[]] * (Num_Cycles + 1)
     # Cell Uncertainties
     Track_Cell_Uncertainties = np.zeros((Num_Cycles,Cell_Cardinality))
     while Imputation_Cycle <= Num_Cycles:
         if Imputation_Cycle > 1:
-            print("Percentage of data suggested for imputation: " + str(np.round((Track_Imputations[Imputation_Cycle-1][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")   
-            print("Percentage of data suggested as false negatives: " + str(np.round((np.sum(Binarised_Input_Matrix[Track_Imputations[Imputation_Cycle-1]] == 0)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
-            print("Percentage of data suggested as false positives: " + str(np.round((np.sum(Binarised_Input_Matrix[Track_Imputations[Imputation_Cycle-1]] == 1)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
+            print("Percentage of data suggested for imputation: " + str(np.round((Track_Type_2_Error_Inds[Imputation_Cycle-1][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")   
+            #print("Percentage of data suggested as false negatives: " + str(np.round((np.sum(Binarised_Input_Matrix[Track_Type_2_Error_Inds[Imputation_Cycle-1]] == 0)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
+            #print("Percentage of data suggested as false positives: " + str(np.round((np.sum(Binarised_Input_Matrix[Track_Type_2_Error_Inds[Imputation_Cycle-1]] == 1)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
         print("Cycle Number " + str(Imputation_Cycle))         
         Minority_Group_Matrix = copy.copy(Binarised_Input_Matrix)
         # Convert suggested imputation points to correct state.
-        Suggested_Impute_Inds = Track_Imputations[Imputation_Cycle-1]
+        Suggested_Impute_Inds = Track_Type_2_Error_Inds[Imputation_Cycle-1]
         Minority_Group_Matrix[Suggested_Impute_Inds] = (Minority_Group_Matrix[Suggested_Impute_Inds] - 1) * -1 
         ### Step 1 of FFAVES is to identify and temporarily remove spurious Minority Group expression states
-        Use_Inds, Cell_Uncertainties = FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
+        Type_1_Error_Inds, Cell_Uncertainties = FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
         ###
         Track_Cell_Uncertainties[(Imputation_Cycle-1),:] = Cell_Uncertainties   
         # Temporarily switch their state. This switch is only temporary because this version of FFAVES works on the assumption that 
         # false postives in scRNA-seq data are incredibly unlikely, and hence leaky gene expression may be genuine biological heterogineity.
         # However, we remove it at this stage to try and keep the imputation strategy cleaner and more conservative in suggesting points to impute.
-        Minority_Group_Matrix[Use_Inds] = (Minority_Group_Matrix[Use_Inds] - 1) * -1
+        Minority_Group_Matrix[Type_1_Error_Inds] = (Minority_Group_Matrix[Type_1_Error_Inds] - 1) * -1
         ### Step 2 of FFAVES is to identify which majority states points are spurious
-        Use_Inds= FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
+        Type_2_Error_Inds = FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
         ###     
-        Step_2_Flat_Use_Inds = np.ravel_multi_index(Use_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
-        Minority_Group_Matrix[Use_Inds] = (Minority_Group_Matrix[Use_Inds] - 1) * -1
+        Step_2_Flat_Use_Inds = np.ravel_multi_index(Type_2_Error_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
+        Minority_Group_Matrix[Type_2_Error_Inds] = (Minority_Group_Matrix[Type_2_Error_Inds] - 1) * -1
         ### Step 3 of FFAVES is to identify and remove spurious suggested imputations
-        Use_Inds = FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
+        Type_1_Error_Inds = FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
         ###
         if Imputation_Cycle > 1:
-            All_Impute_Inds = np.unique(np.append(np.ravel_multi_index(Track_Imputations[Imputation_Cycle-1], (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1])), Step_2_Flat_Use_Inds))
+            All_Impute_Inds = np.unique(np.append(np.ravel_multi_index(Track_Type_2_Error_Inds[Imputation_Cycle-1], (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1])), Step_2_Flat_Use_Inds))
         else:
             All_Impute_Inds = Step_2_Flat_Use_Inds          
-        Step_3_Flat_Use_Inds = np.ravel_multi_index(Use_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
+        Step_3_Flat_Use_Inds = np.ravel_multi_index(Type_1_Error_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
         Ignore_Imputations = np.where(np.isin(All_Impute_Inds,Step_3_Flat_Use_Inds))[0]
         All_Impute_Inds = np.delete(All_Impute_Inds,Ignore_Imputations)
         All_Impute_Inds = np.unravel_index(All_Impute_Inds,(Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
-        Track_Imputations[Imputation_Cycle] = All_Impute_Inds
+        Track_Type_2_Error_Inds[Imputation_Cycle] = All_Impute_Inds
         print("Finished")
-        Track_Percentage_Imputation[0,Imputation_Cycle] = (Track_Imputations[Imputation_Cycle][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
-        Track_Percentage_Imputation[1,Imputation_Cycle] = (np.sum(Binarised_Input_Matrix[Track_Imputations[Imputation_Cycle]] == 0)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
-        Track_Percentage_Imputation[2,Imputation_Cycle] = (np.sum(Binarised_Input_Matrix[Track_Imputations[Imputation_Cycle]] == 1)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
+        Track_Percentage_Imputation[0,Imputation_Cycle] = (Track_Type_2_Error_Inds[Imputation_Cycle][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
+        Track_Percentage_Imputation[1,Imputation_Cycle] = (np.sum(Binarised_Input_Matrix[Track_Type_2_Error_Inds[Imputation_Cycle]] == 0)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
+        Track_Percentage_Imputation[2,Imputation_Cycle] = (np.sum(Binarised_Input_Matrix[Track_Type_2_Error_Inds[Imputation_Cycle]] == 1)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
         if Auto_Save == 1:
-            print("Saving Track_Imputations")
-            np.save("Track_Imputations.npy",np.asarray(Track_Imputations,dtype=object))
+            np.save("Track_Type_2_Error_Inds.npy",np.asarray(Track_Type_2_Error_Inds,dtype=object))
             np.save("Track_Cell_Uncertainties.npy",Track_Cell_Uncertainties)
-            Imputation_Cycle = Imputation_Cycle + 1
             np.save("Track_Percentage_Imputation.npy",Track_Percentage_Imputation)
-    print("Percentage of data suggested for imputation: " + str(np.round((Track_Imputations[Imputation_Cycle-1][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")      
-    return np.asarray(Track_Imputations,dtype=object), Track_Percentage_Imputation, Track_Cell_Uncertainties
+        Imputation_Cycle = Imputation_Cycle + 1
+    print("Percentage of data suggested for imputation: " + str(np.round((Track_Type_2_Error_Inds[Imputation_Cycle-1][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")      
+    return np.asarray(Track_Type_2_Error_Inds,dtype=object), Track_Percentage_Imputation, Track_Cell_Uncertainties
 
 
-def FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality): 
+def FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality):
+    print("Step 1: Quantifying Type 1 Error for each data point.")
+    print("Identifying Sort Info for calculations.") 
     # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
     Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
     # Switch Minority/Majority states to 0/1 where necessary.
@@ -93,10 +94,9 @@ def FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     # Calculate minority group overlap matrix 
     Reference_Gene_Minority_Group_Overlaps = Parallel_Find_Minority_Group_Overlaps(Use_Cores,Gene_Cardinality)
     Permutables[Permutables < Min_Clust_Size] = np.nan
-    print("Step 1: Identifying unreliable data points.")
-    print("Calculating Divergence Matricies")
+    print("Calculating Divergence Matrix.")
     Type_1_Error_Divergences = Parallel_Calculate_Cell_Divergences(1,Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)
-    print("Identifying unreliable data points via half normal distribution")
+    print("Identifying unreliable data points via half normal distribution.")
     # Use half normal distribution of normalised divergent points to suggest which points should be re-evaluated
     Use_Inds = np.where(Minority_Group_Matrix != 0)
     Divergences = Type_1_Error_Divergences[Use_Inds]    
@@ -105,14 +105,16 @@ def FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     zscores = zscores + np.absolute(np.min(zscores))
     # Identify points that diverge in a statistically significant way
     Pass_Threshold = np.where(halfnorm.cdf(zscores) >= Divergences_Significance_Cut_Off)[0]
-    Use_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
+    Type_1_Error_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
     # Measure Cell Uncertainties
     Type_1_Error_Divergences[Minority_Group_Matrix == 0] = np.nan
     Cell_Uncertainties = np.nanmean(Type_1_Error_Divergences,axis=1) 
-    return Use_Inds, Cell_Uncertainties
+    return Type_1_Error_Inds, Cell_Uncertainties
 
 
 def FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality): 
+    print("Step 2: Quantifying Type 2 Error for each data point.")
+    print("Identifying Sort Info for calculations.")
     # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
     Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
     # Switch Minority/Majority states to 0/1 where necessary. 
@@ -120,42 +122,42 @@ def FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     # Calculate minority group overlap matrix
     Reference_Gene_Minority_Group_Overlaps = Parallel_Find_Minority_Group_Overlaps(Use_Cores,Gene_Cardinality)
     Permutables[Permutables < Min_Clust_Size] = np.nan
-    print("Step 2: Identifying data points for imputation.")
-    print("Calculating Divergence Matricies")   
+    print("Calculating Divergence Matrix.")   
     Type_2_Error_Divergences = Parallel_Calculate_Cell_Divergences(2,Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)     
     print("Identifying data points for imputation via half normal distribution")
     # Use half normal distribution of normalised divergent points to suggest which points should be re-evaluated
     Use_Inds = np.where(Minority_Group_Matrix == 0)
-    Divergences = (Type_2_Error_Divergences)[Use_Inds]
+    Divergences = Type_2_Error_Divergences[Use_Inds]
     zscores = zscore(Divergences)
     zscores = zscores + np.absolute(np.min(zscores))              
     # Identify points that diverge in a statistically significant way
     Pass_Threshold = np.where(halfnorm.cdf(zscores) >= Divergences_Significance_Cut_Off)[0]
-    Use_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
-    return Use_Inds
+    Type_2_Error_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
+    return Type_2_Error_Inds
 
 
 def FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality):
+    print("Step 3: Cleaning up untrustworthy imputed values.")
+    print("Identifying Sort Info for calculations.")
     # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
     Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
     # Switch Minority/Majority states to 0/1 where necessary.
     Minority_Group_Matrix[:,Switch_State_Inidicies] = (Minority_Group_Matrix[:,Switch_State_Inidicies] * -1) + 1
     # Calculate minority group overlap matrix
     Reference_Gene_Minority_Group_Overlaps = Parallel_Find_Minority_Group_Overlaps(Use_Cores,Gene_Cardinality)
-    Permutables[Permutables < Min_Clust_Size] = np.nan
-    print("Step 3: Cleaning up untrustworthy imputed values.")
-    print("Calculating Divergence Matricies")
+    Permutables[Permutables < Min_Clust_Size] = np.nan   
+    print("Calculating Divergence Matrix")
     Type_1_Error_Divergences = Parallel_Calculate_Cell_Divergences(1,Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)            
     #Fixed_RG_Neg_SD_Divergences, Information_Gains_Matrix, Weights_Matrix = Parallel_Fixed_RG_Neg_SD(Cell_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)        
-    print("Identifying unreliable imputed data points via half normal distribution")
+    print("Identifying unreliable imputed data points via half normal distribution.")
     Use_Inds = np.where(Minority_Group_Matrix != 0)
     Divergences = Type_1_Error_Divergences[Use_Inds]
     zscores = zscore(Divergences)
     zscores = zscores + np.absolute(np.min(zscores))    
     # Identify points that diverge in a statistically significant way
     Pass_Threshold = np.where(halfnorm.cdf(zscores) >= Divergences_Significance_Cut_Off)[0]
-    Use_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
-    return Use_Inds
+    Type_1_Error_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
+    return Type_1_Error_Inds
 
 
 ### Here we have all of FFAVES subfunctions that are needed to calculate ES scores. ###
@@ -686,7 +688,7 @@ def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Suggested_Type_2_Error_I
     Type_2_Error_Inds = FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
     ###
     Minority_Group_Matrix[Type_2_Error_Inds] = (Minority_Group_Matrix[Type_2_Error_Inds] - 1) * -1
-    print("CalculatingnEntropy Sort Matricies.")
+    print("Calculating Entropy Sort Matricies.")
     print("Identifying Sort Info for calculations.")
     # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
     Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
