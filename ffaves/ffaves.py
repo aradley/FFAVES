@@ -331,119 +331,119 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
             # divergence for each cell.
             Scenario_3_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
-            # ##### Fixed QG Caclulations #####
-            # # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
-            # Minority_Group_Cardinality = Permutables
-            # Majority_Group_Cardinality = Cell_Cardinality - Permutables
-            # Permutable = Permutables[Feature_Inds]
-            # # Maximum entropy of the system is identified from the derivative of the Entropy Sorting Equation (ESQ)
-            # Max_Entropy_Permutation = (Minority_Group_Cardinality * Permutable)/(Minority_Group_Cardinality + Majority_Group_Cardinality)
-            # # The maximum and minimum points of the ESQ are identified from the boundaries of the ESQ curve.
-            # Min_Entropy_ID_1 = np.zeros(Permutables.shape[0])
-            # Min_Entropy_ID_2 = np.repeat(Permutable,Permutables.shape[0])
-            # Check_Fits_Group_1 = Minority_Group_Cardinality - Min_Entropy_ID_2
-            # # If the minority group of the QG is larger than the minority group of the RG then the boundary point is the cardinality of the RG minority group.
-            # Min_Entropy_ID_2[np.where(Check_Fits_Group_1 < 0)[0]] = Minority_Group_Cardinality[np.where(Check_Fits_Group_1 < 0)[0]]
-            # # Split_Permute_Value is the overlap of minority states that we actually observe in the data.
-            # Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
-            # ### Type 1 Error Scenario 4) Fixed QG, SD = 1 and G1 <= G2 ###
-            # Scenario_4_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality > Permutable))[0]
-            # Split_Direction = 1
-            # Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_4_Inds],Minority_Group_Cardinality[Scenario_4_Inds],Majority_Group_Cardinality[Scenario_4_Inds],Min_Entropy_ID_1[Scenario_4_Inds],Min_Entropy_ID_2[Scenario_4_Inds],Split_Permute_Value[Scenario_4_Inds])
-            # ## Calculate Divergence Information
-            # Sort_Genes = Minority_Group_Matrix[:,Scenario_4_Inds]
-            # Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
-            # # In this scenario we are looking for where minority groups overlap (equals 2)
-            # Sort_Genes[Sort_Genes != -1] = 0
-            # Sort_Genes[Sort_Genes == -1] = 1
-            # # In scenario 3 we include the gap
-            # Divergences = Split_Permute_Entropies
-            # # Identify how many cells overlap for each QG/RG pair.
-            # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
-            # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # with np.errstate(divide='ignore',invalid='ignore'):
-            #     Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
-            # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
-            # Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_4_Inds] - Max_Entropy_Permutation[Scenario_4_Inds]
-            # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
-            # # Deduct the observed average divergence per cell from average divergence per cell in the maximum entorpy arrangment.
-            # RG_QG_Divergences = Cell_Divergences - Minimum_Background_Noise
-            # # Null/Ignore points that aren't usable.
-            # RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
-            # RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
-            # # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
-            # # Null these data points by setting all overlaps to 0.
-            # Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
-            # Sort_Genes[:,Uninformative_Genes] = 0 
-            # # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
-            # # divergence for each cell.
-            # Scenario_4_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
-            # ### Type 1 Error Scenario 5) Fixed QG, SD = -1 and G1 <= G2 ###
-            # Scenario_5_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality > Permutable))[0]
-            # Split_Direction = -1
-            # Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_5_Inds],Minority_Group_Cardinality[Scenario_5_Inds],Majority_Group_Cardinality[Scenario_5_Inds],Min_Entropy_ID_1[Scenario_5_Inds],Min_Entropy_ID_2[Scenario_5_Inds],Split_Permute_Value[Scenario_5_Inds])
-            # ## Calculate Divergence Information
-            # Sort_Genes = Minority_Group_Matrix[:,Scenario_5_Inds]
-            # Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
-            # # In this scenario we are looking for where minority groups overlap (equals 2)
-            # Sort_Genes[Sort_Genes != 2] = 0
-            # Sort_Genes[Sort_Genes == 2] = 1
-            # # In scenario 3 we include the gap
-            # Divergences = Split_Permute_Entropies
-            # # Identify how many cells overlap for each QG/RG pair.
-            # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
-            # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # with np.errstate(divide='ignore',invalid='ignore'):
-            #     Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
-            # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
-            # Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_5_Inds]
-            # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
-            # # Deduct the observed average divergence per cell from average divergence per cell in the maximum entorpy arrangment.
-            # RG_QG_Divergences = Cell_Divergences - Minimum_Background_Noise
-            # # Null/Ignore points that aren't usable.
-            # RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
-            # RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
-            # # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
-            # # Null these data points by setting all overlaps to 0.
-            # Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
-            # Sort_Genes[:,Uninformative_Genes] = 0 
-            # # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
-            # # divergence for each cell.
-            # Scenario_5_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
-            # ### Type 1 Error Scenario 6) Fixed QG, SD = -1 and G1 <= G2 ###
-            # Scenario_6_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality <= Permutable))[0]
-            # Split_Direction = -1
-            # Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_6_Inds],Minority_Group_Cardinality[Scenario_6_Inds],Majority_Group_Cardinality[Scenario_6_Inds],Min_Entropy_ID_1[Scenario_6_Inds],Min_Entropy_ID_2[Scenario_6_Inds],Split_Permute_Value[Scenario_6_Inds])
-            # ## Calculate Divergence Information
-            # Sort_Genes = Minority_Group_Matrix[:,Scenario_6_Inds]
-            # Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
-            # # In this scenario we are looking for where minority groups overlap (equals 2)
-            # Sort_Genes[Sort_Genes != 2] = 0
-            # Sort_Genes[Sort_Genes == 2] = 1
-            # # In scenario 3 we include the gap
-            # Divergences = Split_Permute_Entropies
-            # # Identify how many cells overlap for each QG/RG pair.
-            # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
-            # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # with np.errstate(divide='ignore',invalid='ignore'):
-            #     Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
-            # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
-            # Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_6_Inds]
-            # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
-            # # Deduct the observed average divergence per cell from average divergence per cell in the maximum entorpy arrangment.
-            # RG_QG_Divergences = Cell_Divergences - Minimum_Background_Noise
-            # # Null/Ignore points that aren't usable.
-            # RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
-            # RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
-            # # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
-            # # Null these data points by setting all overlaps to 0.
-            # Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
-            # Sort_Genes[:,Uninformative_Genes] = 0 
-            # # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
-            # # divergence for each cell.
-            # Scenario_6_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
-            ####
-            Type_1_Error_Divergences = (Scenario_1_Divergences+Scenario_2_Divergences+Scenario_3_Divergences)#+Scenario_4_Divergences+Scenario_5_Divergences+Scenario_6_Divergences)
+            ##### Fixed QG Caclulations #####
+            # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
+            Minority_Group_Cardinality = Permutables
+            Majority_Group_Cardinality = Cell_Cardinality - Permutables
+            Permutable = Permutables[Feature_Inds]
+            # Maximum entropy of the system is identified from the derivative of the Entropy Sorting Equation (ESQ)
+            Max_Entropy_Permutation = (Minority_Group_Cardinality * Permutable)/(Minority_Group_Cardinality + Majority_Group_Cardinality)
+            # The maximum and minimum points of the ESQ are identified from the boundaries of the ESQ curve.
+            Min_Entropy_ID_1 = np.zeros(Permutables.shape[0])
+            Min_Entropy_ID_2 = np.repeat(Permutable,Permutables.shape[0])
+            Check_Fits_Group_1 = Minority_Group_Cardinality - Min_Entropy_ID_2
+            # If the minority group of the QG is larger than the minority group of the RG then the boundary point is the cardinality of the RG minority group.
+            Min_Entropy_ID_2[np.where(Check_Fits_Group_1 < 0)[0]] = Minority_Group_Cardinality[np.where(Check_Fits_Group_1 < 0)[0]]
+            # Split_Permute_Value is the overlap of minority states that we actually observe in the data.
+            Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
+            ### Type 1 Error Scenario 4) Fixed QG, SD = 1 and G1 <= G2 ###
+            Scenario_4_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality > Permutable))[0]
+            Split_Direction = 1
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_4_Inds],Minority_Group_Cardinality[Scenario_4_Inds],Majority_Group_Cardinality[Scenario_4_Inds],Min_Entropy_ID_1[Scenario_4_Inds],Min_Entropy_ID_2[Scenario_4_Inds],Split_Permute_Value[Scenario_4_Inds])
+            ## Calculate Divergence Information
+            Sort_Genes = Minority_Group_Matrix[:,Scenario_4_Inds]
+            Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
+            # In this scenario we are looking for where minority groups overlap (equals 2)
+            Sort_Genes[Sort_Genes != -1] = 0
+            Sort_Genes[Sort_Genes == -1] = 1
+            # In scenario 3 we include the gap
+            Divergences = Split_Permute_Entropies
+            # Identify how many cells overlap for each QG/RG pair.
+            Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
+            # Find the average divergence for each cell that is diverging from the optimal sort.
+            with np.errstate(divide='ignore',invalid='ignore'):
+                Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
+            Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_4_Inds] - Max_Entropy_Permutation[Scenario_4_Inds]
+            Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
+            # Deduct the observed average divergence per cell from average divergence per cell in the maximum entorpy arrangment.
+            RG_QG_Divergences = Cell_Divergences - Minimum_Background_Noise
+            # Null/Ignore points that aren't usable.
+            RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
+            RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
+            # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
+            # Null these data points by setting all overlaps to 0.
+            Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
+            Sort_Genes[:,Uninformative_Genes] = 0 
+            # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
+            # divergence for each cell.
+            Scenario_4_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
+            ### Type 1 Error Scenario 5) Fixed QG, SD = -1 and G1 <= G2 ###
+            Scenario_5_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality > Permutable))[0]
+            Split_Direction = -1
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_5_Inds],Minority_Group_Cardinality[Scenario_5_Inds],Majority_Group_Cardinality[Scenario_5_Inds],Min_Entropy_ID_1[Scenario_5_Inds],Min_Entropy_ID_2[Scenario_5_Inds],Split_Permute_Value[Scenario_5_Inds])
+            ## Calculate Divergence Information
+            Sort_Genes = Minority_Group_Matrix[:,Scenario_5_Inds]
+            Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
+            # In this scenario we are looking for where minority groups overlap (equals 2)
+            Sort_Genes[Sort_Genes != 2] = 0
+            Sort_Genes[Sort_Genes == 2] = 1
+            # In scenario 3 we include the gap
+            Divergences = Split_Permute_Entropies
+            # Identify how many cells overlap for each QG/RG pair.
+            Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
+            # Find the average divergence for each cell that is diverging from the optimal sort.
+            with np.errstate(divide='ignore',invalid='ignore'):
+                Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
+            Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_5_Inds]
+            Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
+            # Deduct the observed average divergence per cell from average divergence per cell in the maximum entorpy arrangment.
+            RG_QG_Divergences = Cell_Divergences - Minimum_Background_Noise
+            # Null/Ignore points that aren't usable.
+            RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
+            RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
+            # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
+            # Null these data points by setting all overlaps to 0.
+            Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
+            Sort_Genes[:,Uninformative_Genes] = 0 
+            # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
+            # divergence for each cell.
+            Scenario_5_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
+            ### Type 1 Error Scenario 6) Fixed QG, SD = -1 and G1 <= G2 ###
+            Scenario_6_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality <= Permutable))[0]
+            Split_Direction = -1
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_6_Inds],Minority_Group_Cardinality[Scenario_6_Inds],Majority_Group_Cardinality[Scenario_6_Inds],Min_Entropy_ID_1[Scenario_6_Inds],Min_Entropy_ID_2[Scenario_6_Inds],Split_Permute_Value[Scenario_6_Inds])
+            ## Calculate Divergence Information
+            Sort_Genes = Minority_Group_Matrix[:,Scenario_6_Inds]
+            Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
+            # In this scenario we are looking for where minority groups overlap (equals 2)
+            Sort_Genes[Sort_Genes != 2] = 0
+            Sort_Genes[Sort_Genes == 2] = 1
+            # In scenario 3 we include the gap
+            Divergences = Split_Permute_Entropies
+            # Identify how many cells overlap for each QG/RG pair.
+            Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
+            # Find the average divergence for each cell that is diverging from the optimal sort.
+            with np.errstate(divide='ignore',invalid='ignore'):
+                Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
+            Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_6_Inds]
+            Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
+            # Deduct the observed average divergence per cell from average divergence per cell in the maximum entorpy arrangment.
+            RG_QG_Divergences = Cell_Divergences - Minimum_Background_Noise
+            # Null/Ignore points that aren't usable.
+            RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
+            RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
+            # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
+            # Null these data points by setting all overlaps to 0.
+            Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
+            Sort_Genes[:,Uninformative_Genes] = 0 
+            # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
+            # divergence for each cell.
+            Scenario_6_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
+            ###
+            Type_1_Error_Divergences = (Scenario_1_Divergences+Scenario_2_Divergences+Scenario_3_Divergences+Scenario_4_Divergences+Scenario_5_Divergences+Scenario_6_Divergences)
             return Type_1_Error_Divergences
         if Error_Type == 2: # Caluclate divergences for each Type 2 (false negative) error scenarios.
             ##### Fixed RG Caclulations #####
@@ -499,54 +499,54 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
             # divergence for each cell.
             Scenario_1_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
-            # ##### Fixed QG Caclulations #####
-            # # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
-            # Minority_Group_Cardinality = Permutables
-            # Majority_Group_Cardinality = Cell_Cardinality - Permutables
-            # Permutable = Permutables[Feature_Inds]
-            # # Maximum entropy of the system is identified from the derivative of the Entropy Sorting Equation (ESQ)
-            # Max_Entropy_Permutation = (Minority_Group_Cardinality * Permutable)/(Minority_Group_Cardinality + Majority_Group_Cardinality)
-            # # The maximum and minimum points of the ESQ are identified from the boundaries of the ESQ curve.
-            # Min_Entropy_ID_1 = np.zeros(Permutables.shape[0])
-            # Min_Entropy_ID_2 = np.repeat(Permutable,Permutables.shape[0])
-            # Check_Fits_Group_1 = Minority_Group_Cardinality - Min_Entropy_ID_2
-            # # If the minority group of the QG is larger than the minority group of the RG then the boundary point is the cardinality of the RG minority group.
-            # Min_Entropy_ID_2[np.where(Check_Fits_Group_1 < 0)[0]] = Minority_Group_Cardinality[np.where(Check_Fits_Group_1 < 0)[0]]
-            # # Split_Permute_Value is the overlap of minority states that we actually observe in the data.
-            # Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
-            # ### Type 2 Error Scenario 2) Fixed RG, SD = +1 and G1 <= G2 ###
-            # Scenario_2_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality < Permutable))[0]
-            # Split_Direction = 1
-            # Split_Permute_Entropies, Max_Permuation_Entropies,Minimum_Entropies = Calculate_Fixed_QG_Sort_Values(2,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_2_Inds],Minority_Group_Cardinality[Scenario_2_Inds],Majority_Group_Cardinality[Scenario_2_Inds],Min_Entropy_ID_1[Scenario_2_Inds],Min_Entropy_ID_2[Scenario_2_Inds],Split_Permute_Value[Scenario_2_Inds])
-            # ## Calculate Divergence Information
-            # Sort_Genes = Minority_Group_Matrix[:,Scenario_2_Inds]
-            # Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
-            # # In this scenario we are looking for where minority groups overlap (equals 2)
-            # Sort_Genes[Sort_Genes != 1] = 0
-            # # In scenario 2 we exclude the gap
-            # Divergences = Split_Permute_Entropies - Minimum_Entropies
-            # # Identify how many cells overlap for each QG/RG pair.
-            # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
-            # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # with np.errstate(divide='ignore',invalid='ignore'):
-            #     Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
-            # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
-            # Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_2_Inds] - Max_Entropy_Permutation[Scenario_2_Inds]
-            # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
-            # # Deduct the observed average divergence per cell from average divergence per cell in the maximum entorpy arrangment.
-            # RG_QG_Divergences = Cell_Divergences - Minimum_Background_Noise
-            # # Null/Ignore points that aren't usable.
-            # RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
-            # RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
-            # # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
-            # # Null these data points by setting all overlaps to 0.
-            # Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
-            # Sort_Genes[:,Uninformative_Genes] = 0 
-            # # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
-            # # divergence for each cell.
-            # Scenario_2_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
-            ####
-            Type_2_Error_Divergences = (Scenario_1_Divergences)#+Scenario_2_Divergences)
+            ##### Fixed QG Caclulations #####
+            # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
+            Minority_Group_Cardinality = Permutables
+            Majority_Group_Cardinality = Cell_Cardinality - Permutables
+            Permutable = Permutables[Feature_Inds]
+            # Maximum entropy of the system is identified from the derivative of the Entropy Sorting Equation (ESQ)
+            Max_Entropy_Permutation = (Minority_Group_Cardinality * Permutable)/(Minority_Group_Cardinality + Majority_Group_Cardinality)
+            # The maximum and minimum points of the ESQ are identified from the boundaries of the ESQ curve.
+            Min_Entropy_ID_1 = np.zeros(Permutables.shape[0])
+            Min_Entropy_ID_2 = np.repeat(Permutable,Permutables.shape[0])
+            Check_Fits_Group_1 = Minority_Group_Cardinality - Min_Entropy_ID_2
+            # If the minority group of the QG is larger than the minority group of the RG then the boundary point is the cardinality of the RG minority group.
+            Min_Entropy_ID_2[np.where(Check_Fits_Group_1 < 0)[0]] = Minority_Group_Cardinality[np.where(Check_Fits_Group_1 < 0)[0]]
+            # Split_Permute_Value is the overlap of minority states that we actually observe in the data.
+            Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
+            ### Type 2 Error Scenario 2) Fixed RG, SD = +1 and G1 <= G2 ###
+            Scenario_2_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality < Permutable))[0]
+            Split_Direction = 1
+            Split_Permute_Entropies, Max_Permuation_Entropies,Minimum_Entropies = Calculate_Fixed_QG_Sort_Values(2,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_2_Inds],Minority_Group_Cardinality[Scenario_2_Inds],Majority_Group_Cardinality[Scenario_2_Inds],Min_Entropy_ID_1[Scenario_2_Inds],Min_Entropy_ID_2[Scenario_2_Inds],Split_Permute_Value[Scenario_2_Inds])
+            ## Calculate Divergence Information
+            Sort_Genes = Minority_Group_Matrix[:,Scenario_2_Inds]
+            Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
+            # In this scenario we are looking for where minority groups overlap (equals 2)
+            Sort_Genes[Sort_Genes != 1] = 0
+            # In scenario 2 we exclude the gap
+            Divergences = Split_Permute_Entropies - Minimum_Entropies
+            # Identify how many cells overlap for each QG/RG pair.
+            Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
+            # Find the average divergence for each cell that is diverging from the optimal sort.
+            with np.errstate(divide='ignore',invalid='ignore'):
+                Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
+            Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_2_Inds] - Max_Entropy_Permutation[Scenario_2_Inds]
+            Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
+            # Deduct the observed average divergence per cell from average divergence per cell in the maximum entorpy arrangment.
+            RG_QG_Divergences = Cell_Divergences - Minimum_Background_Noise
+            # Null/Ignore points that aren't usable.
+            RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
+            RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
+            # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
+            # Null these data points by setting all overlaps to 0.
+            Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
+            Sort_Genes[:,Uninformative_Genes] = 0 
+            # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
+            # divergence for each cell.
+            Scenario_2_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
+            ###
+            Type_2_Error_Divergences = (Scenario_1_Divergences+Scenario_2_Divergences)
             return Type_2_Error_Divergences
     else:
         # When a feature cannot be used just give all points a value of 0.
