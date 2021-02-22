@@ -48,7 +48,8 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
         Suggested_Impute_Inds = Track_Type_2_Error_Inds[Imputation_Cycle-1]
         Minority_Group_Matrix[Suggested_Impute_Inds] = (Minority_Group_Matrix[Suggested_Impute_Inds] - 1) * -1 
         ### Step 1 of FFAVES is to identify and temporarily remove spurious Minority Group expression states
-        Type_1_Error_Inds, Cell_Uncertainties = FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
+        with np.errstate(divide='ignore',invalid='ignore'):
+            Type_1_Error_Inds, Cell_Uncertainties = FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
         ###
         Track_Cell_Uncertainties[(Imputation_Cycle-1),:] = Cell_Uncertainties   
         # Temporarily switch their state. This switch is only temporary because this version of FFAVES works on the assumption that 
@@ -56,12 +57,14 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
         # However, we remove it at this stage to try and keep the imputation strategy cleaner and more conservative in suggesting points to impute.
         Minority_Group_Matrix[Type_1_Error_Inds] = (Minority_Group_Matrix[Type_1_Error_Inds] - 1) * -1
         ### Step 2 of FFAVES is to identify which majority states points are spurious
-        Type_2_Error_Inds = FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
+        with np.errstate(divide='ignore',invalid='ignore'):
+            Type_2_Error_Inds = FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
         ###     
         Step_2_Flat_Use_Inds = np.ravel_multi_index(Type_2_Error_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
         Minority_Group_Matrix[Type_2_Error_Inds] = (Minority_Group_Matrix[Type_2_Error_Inds] - 1) * -1
         ### Step 3 of FFAVES is to identify and remove spurious suggested imputations
-        Type_1_Error_Inds = FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
+        with np.errstate(divide='ignore',invalid='ignore'):
+            Type_1_Error_Inds = FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
         ###
         if Imputation_Cycle > 1:
             All_Impute_Inds = np.unique(np.append(np.ravel_multi_index(Track_Type_2_Error_Inds[Imputation_Cycle-1], (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1])), Step_2_Flat_Use_Inds))
@@ -198,8 +201,7 @@ def Parallel_Find_Minority_Group_Overlaps(Use_Cores,Gene_Cardinality):
 def Find_Minority_Group_Overlaps(Ind):
     # For each feature, identify how often its minority state samples overlap with the minority state samples of every other feature.
     Reference_Gene = Minority_Group_Matrix[:,Ind]
-    Temp_Input_Binarised_Data = Minority_Group_Matrix + Reference_Gene[:,np.newaxis]
-    Overlaps = np.sum(Temp_Input_Binarised_Data == 2,axis=0)
+    Overlaps = np.dot(Reference_Gene,Minority_Group_Matrix)
     return Overlaps
 
 
@@ -262,8 +264,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # In scenario 1 we include the gap
             Divergences = Split_Permute_Entropies
             # Find the average divergence for each cell that is diverging from the optimal sort.
-            with np.errstate(divide='ignore',invalid='ignore'):
-                Cell_Divergences = Divergences / Num_Divergent_Cell[Scenario_1_Inds]
+            Cell_Divergences = Divergences / Num_Divergent_Cell[Scenario_1_Inds]
             # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_1_Inds] - Max_Entropy_Permutation[Scenario_1_Inds]
             Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -294,8 +295,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # # Identify how many cells overlap for each QG/RG pair.
             # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
             # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # with np.errstate(divide='ignore',invalid='ignore'):
-            #     Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
             # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             # Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_2_Inds]
             # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -319,8 +319,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # In scenario 3 we include the gap
             Divergences = Split_Permute_Entropies
             # Find the average divergence for each cell that is diverging from the optimal sort.
-            with np.errstate(divide='ignore',invalid='ignore'):
-                Cell_Divergences = Divergences / Split_Permute_Value[Scenario_3_Inds]
+            Cell_Divergences = Divergences / Split_Permute_Value[Scenario_3_Inds]
             # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_3_Inds]
             Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -368,8 +367,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # # Identify how many cells overlap for each QG/RG pair.
             # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
             # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # with np.errstate(divide='ignore',invalid='ignore'):
-            #     Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
             # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             # Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_4_Inds] - Max_Entropy_Permutation[Scenario_4_Inds]
             # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -400,8 +398,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # # Identify how many cells overlap for each QG/RG pair.
             # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
             # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # with np.errstate(divide='ignore',invalid='ignore'):
-            #     Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
             # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             # Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_5_Inds]
             # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -425,8 +422,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # In scenario 6 we include the gap
             Divergences = Split_Permute_Entropies
             # Find the average divergence for each cell that is diverging from the optimal sort.
-            with np.errstate(divide='ignore',invalid='ignore'):
-                Cell_Divergences = Divergences / Split_Permute_Value[Scenario_6_Inds]
+            Cell_Divergences = Divergences / Split_Permute_Value[Scenario_6_Inds]
             # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_6_Inds]
             Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -482,8 +478,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # # Identify how many cells overlap for each QG/RG pair.
             # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
             # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # with np.errstate(divide='ignore',invalid='ignore'):
-            #     Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
             # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             # Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_1_Inds] - Max_Entropy_Permutation[Scenario_1_Inds]
             # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -530,8 +525,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # In scenario 2 we exclude the gap
             Divergences = Split_Permute_Entropies - Minimum_Entropies
             # Find the average divergence for each cell that is diverging from the optimal sort.
-            with np.errstate(divide='ignore',invalid='ignore'):
-                Cell_Divergences = Divergences / Num_Divergent_Cell[Scenario_2_Inds]
+            Cell_Divergences = Divergences / Num_Divergent_Cell[Scenario_2_Inds]
             # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_2_Inds] - Max_Entropy_Permutation[Scenario_2_Inds]
             Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
