@@ -1,5 +1,3 @@
-
-
 ### Dependencies ###
 
 import numpy as np
