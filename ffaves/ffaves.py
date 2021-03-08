@@ -19,87 +19,120 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
             Use_Cores = 1
     print("Cores Avaiblable: " + str(Cores_Available))
     print("Cores Used: " + str(Use_Cores))
+    # Remove genes below Min_Clust_Size
+    Keep_Features = np.where(np.sum(Binarised_Input_Matrix,axis=0) >= Min_Clust_Size)[0]
+    if Keep_Features.shape[0] < Binarised_Input_Matrix.shape[1]:
+        print("Ignoring " + str(Binarised_Input_Matrix.shape[1]-Keep_Features.shape[0]) + " features which are below the Min_Clust_Threshold")
+        Binarised_Input_Matrix = Binarised_Input_Matrix[:,Keep_Features]
     # Define data dimensions
     #global Cell_Cardinality
     Cell_Cardinality = Binarised_Input_Matrix.shape[0]
     #global Gene_Cardinality
     Gene_Cardinality = Binarised_Input_Matrix.shape[1]
+    # Convert Binarised_Input_Matrix into Minority_Group_Matrix
+    Permutables, Switch_State_Inidicies = Find_Permutations(Binarised_Input_Matrix,Cell_Cardinality)
+    Binarised_Input_Matrix[:,Switch_State_Inidicies] = (Binarised_Input_Matrix[:,Switch_State_Inidicies] * -1) + 1  
     # Set up Minority_Group_Matrix
     global Minority_Group_Matrix
     # Track what cycle FFAVES is on.
     Imputation_Cycle = 1
     print("Number of cells: " + str(Cell_Cardinality))
     print("Number of genes: " + str(Gene_Cardinality))
-    Track_Percentage_Imputation = np.zeros((3,Num_Cycles+1))
-    Track_Type_2_Error_Inds = np.empty(((Num_Cycles + 1),),dtype="object")
-    Track_Type_2_Error_Inds[...]=[[] for _ in range((Num_Cycles + 1))]
+    Track_Percentage_Imputation = np.zeros((2,Num_Cycles+1))
+    Track_Imputation_Steps = np.empty(((Num_Cycles + 1),),dtype="object")
+    Track_Imputation_Steps[...]=[([[]]*4) for _ in range((Num_Cycles + 1))]  
     # Cell Uncertainties
     Track_Cell_Uncertainties = np.zeros((Num_Cycles,Cell_Cardinality))
     # Set up tolerance tracker
     Covergence_Counter = 0
     while Imputation_Cycle <= Num_Cycles and Covergence_Counter < 3:
         if Imputation_Cycle > 1:
-            print("Percentage of data suggested for imputation: " + str(np.round((Track_Type_2_Error_Inds[Imputation_Cycle-1][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")   
-            #print("Percentage of data suggested as false negatives: " + str(np.round((np.sum(Binarised_Input_Matrix[Track_Type_2_Error_Inds[Imputation_Cycle-1]] == 0)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
-            #print("Percentage of data suggested as false positives: " + str(np.round((np.sum(Binarised_Input_Matrix[Track_Type_2_Error_Inds[Imputation_Cycle-1]] == 1)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
+            print("Percentage of original data suggested as Type 1 Error: " + str(np.round((Track_Imputation_Steps[Imputation_Cycle-1][0][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
+            print("Percentage of original data suggested as Type 2 Error: " + str(np.round((Track_Imputation_Steps[Imputation_Cycle-1][3][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")   
+        # Initiate Cycle_Imputation_Steps
+        Cycle_Imputation_Steps = [[]] * 4
+        # Initiate Cycle_Cell_Uncertainties
+        Cycle_Cell_Uncertainties = np.zeros(Cell_Cardinality)
         print("Cycle Number " + str(Imputation_Cycle))         
         Minority_Group_Matrix = copy.copy(Binarised_Input_Matrix)
-        # Convert suggested imputation points to correct state.
-        Suggested_Impute_Inds = Track_Type_2_Error_Inds[Imputation_Cycle-1]
-        Minority_Group_Matrix[Suggested_Impute_Inds] = (Minority_Group_Matrix[Suggested_Impute_Inds] - 1) * -1 
+        # Convert suggested imputation points from previous cycle to correct state.
+        All_Type_2_Error_Impute_Inds = Track_Imputation_Steps[Imputation_Cycle-1][3]
+        Minority_Group_Matrix[All_Type_2_Error_Impute_Inds] = (Minority_Group_Matrix[All_Type_2_Error_Impute_Inds] - 1) * -1 
         ### Step 1 of FFAVES is to identify and temporarily remove spurious Minority Group expression states
         with np.errstate(divide='ignore',invalid='ignore'):
-            Type_1_Error_Inds, Cell_Uncertainties = FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
-        ###
-        Track_Cell_Uncertainties[(Imputation_Cycle-1),:] = Cell_Uncertainties   
-        # Temporarily switch their state. This switch is only temporary because this version of FFAVES works on the assumption that 
-        # false postives in scRNA-seq data are incredibly unlikely, and hence leaky gene expression may be genuine biological heterogineity.
-        # However, we remove it at this stage to try and keep the imputation strategy cleaner and more conservative in suggesting points to impute.
-        Minority_Group_Matrix[Type_1_Error_Inds] = (Minority_Group_Matrix[Type_1_Error_Inds] - 1) * -1
+            Step_1_Type_1_Error_Inds, Switch_State_Inidicies_1, Cell_Uncertainties = FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)  
+        # Track Cell_Uncertainties
+        Cycle_Cell_Uncertainties = Cycle_Cell_Uncertainties + Cell_Uncertainties
+        Minority_Group_Matrix[Step_1_Type_1_Error_Inds] = (Minority_Group_Matrix[Step_1_Type_1_Error_Inds] - 1) * -1
         ### Step 2 of FFAVES is to identify which majority states points are spurious
         with np.errstate(divide='ignore',invalid='ignore'):
-            Type_2_Error_Inds = FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
-        ###     
-        Step_2_Flat_Use_Inds = np.ravel_multi_index(Type_2_Error_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
+            Type_2_Error_Inds, Switch_State_Inidicies_2, Cell_Uncertainties = FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)       
+        # Track Cell_Uncertainties
+        Cycle_Cell_Uncertainties = Cycle_Cell_Uncertainties + Cell_Uncertainties
         Minority_Group_Matrix[Type_2_Error_Inds] = (Minority_Group_Matrix[Type_2_Error_Inds] - 1) * -1
+        # If Majority State imputation has led to a state inversion, we declare this set of imputations as leading to
+        # ambuguity of feature Minority State locality in the data. As such, we ignore these imputations
+        # under the assumption that if the Minority State of a feature is structured in the original dataset,
+        # it's locality in the data would not completely switch. This is a consequence of the fact that the accruacy
+        # of Entropy Sorting struggles when the cardinality of the minority state of a feature approaches half the cardinality
+        # of the number of samples.
+        State_Inversions = np.where(np.sum(Minority_Group_Matrix,axis=0) > (Cell_Cardinality/float(2)))[0]
+        if State_Inversions.shape[0] > 0:
+            Remove_Imputations = np.where(np.isin(Type_2_Error_Inds[1],State_Inversions))[0]
+            Remove_Imputations = (Type_2_Error_Inds[0][Remove_Imputations],Type_2_Error_Inds[1][Remove_Imputations])
+            Minority_Group_Matrix[Remove_Imputations] = (Minority_Group_Matrix[Remove_Imputations] - 1) * -1
+            Keep_Imputations = np.where(np.isin(Type_2_Error_Inds[1],State_Inversions) == 0)[0]
+            Type_2_Error_Inds = (Type_2_Error_Inds[0][Keep_Imputations],Type_2_Error_Inds[1][Keep_Imputations])
         ### Step 3 of FFAVES is to identify and remove spurious suggested imputations
         with np.errstate(divide='ignore',invalid='ignore'):
-            Type_1_Error_Inds = FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
-        ###
+            Step_3_Type_1_Error_Inds, Switch_State_Inidicies_1 = FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)  
+        ### Null suggested imputations that significantly disagree with aspects of the existing structure
+        Flat_Step_1_Inds = np.ravel_multi_index(Step_1_Type_1_Error_Inds, Binarised_Input_Matrix.shape)
+        Flat_Step_2_Inds = np.ravel_multi_index(Type_2_Error_Inds, Binarised_Input_Matrix.shape)
+        Flat_Step_3_Inds = np.ravel_multi_index(Step_3_Type_1_Error_Inds, Binarised_Input_Matrix.shape)
         if Imputation_Cycle > 1:
-            All_Impute_Inds = np.unique(np.append(np.ravel_multi_index(Track_Type_2_Error_Inds[Imputation_Cycle-1], (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1])), Step_2_Flat_Use_Inds))
+            All_Type_2_Error_Impute_Inds = np.unique(np.append(np.ravel_multi_index(All_Type_2_Error_Impute_Inds, Binarised_Input_Matrix.shape), Flat_Step_2_Inds))
         else:
-            All_Impute_Inds = Step_2_Flat_Use_Inds          
-        Step_3_Flat_Use_Inds = np.ravel_multi_index(Type_1_Error_Inds, (Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
-        Ignore_Imputations = np.where(np.isin(All_Impute_Inds,Step_3_Flat_Use_Inds))[0]
-        All_Impute_Inds = np.delete(All_Impute_Inds,Ignore_Imputations)
-        All_Impute_Inds = np.unravel_index(All_Impute_Inds,(Binarised_Input_Matrix.shape[0],Binarised_Input_Matrix.shape[1]))
-        Track_Type_2_Error_Inds[Imputation_Cycle] = All_Impute_Inds
+            All_Type_2_Error_Impute_Inds = Flat_Step_2_Inds
+        # Ignore double imputations (i.e removed in step 1 and are then re-imputed in step 2)
+        Ignore_Imputations = np.where(np.isin(All_Type_2_Error_Impute_Inds,Flat_Step_1_Inds))[0]
+        All_Type_2_Error_Impute_Inds = np.delete(All_Type_2_Error_Impute_Inds,Ignore_Imputations)
+        # Remove spurious imputations identified in step 3
+        Ignore_Imputations = np.where(np.isin(All_Type_2_Error_Impute_Inds,Flat_Step_3_Inds))[0]
+        All_Type_2_Error_Impute_Inds = np.delete(All_Type_2_Error_Impute_Inds,Ignore_Imputations)
+        All_Type_2_Error_Impute_Inds = np.unravel_index(All_Type_2_Error_Impute_Inds,Binarised_Input_Matrix.shape)
+        ### Track Erroneous points
+        Cycle_Imputation_Steps[0] = Step_1_Type_1_Error_Inds
+        Cycle_Imputation_Steps[1] = Type_2_Error_Inds
+        Cycle_Imputation_Steps[2] = Step_3_Type_1_Error_Inds
+        Cycle_Imputation_Steps[3] = All_Type_2_Error_Impute_Inds
+        Track_Imputation_Steps[Imputation_Cycle] = Cycle_Imputation_Steps
+        Track_Cell_Uncertainties[(Imputation_Cycle-1),:] = Cycle_Cell_Uncertainties 
         print("Finished")
-        Track_Percentage_Imputation[0,Imputation_Cycle] = (Track_Type_2_Error_Inds[Imputation_Cycle][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
-        Track_Percentage_Imputation[1,Imputation_Cycle] = (np.sum(Binarised_Input_Matrix[Track_Type_2_Error_Inds[Imputation_Cycle]] == 0)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
-        Track_Percentage_Imputation[2,Imputation_Cycle] = (np.sum(Binarised_Input_Matrix[Track_Type_2_Error_Inds[Imputation_Cycle]] == 1)/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
+        Track_Percentage_Imputation[0,Imputation_Cycle] = (Track_Imputation_Steps[Imputation_Cycle][0][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
+        Track_Percentage_Imputation[1,Imputation_Cycle] = (Track_Imputation_Steps[Imputation_Cycle][3][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
         if Imputation_Cycle < Num_Cycles:
-            Imputed_Difference = np.absolute(Track_Percentage_Imputation[0,Imputation_Cycle] - Track_Percentage_Imputation[0,Imputation_Cycle-1])
+            Imputed_Difference = np.absolute(Track_Percentage_Imputation[1,Imputation_Cycle] - Track_Percentage_Imputation[1,Imputation_Cycle-1])
             if Imputed_Difference <= Tolerance:
                 Covergence_Counter = Covergence_Counter + 1
             else:
                 Covergence_Counter = 0
         Imputation_Cycle = Imputation_Cycle + 1
-        if Auto_Save == 1:
-            np.save("Track_Type_2_Error_Inds.npy",Track_Type_2_Error_Inds)
-            np.save("Track_Cell_Uncertainties.npy",Track_Cell_Uncertainties)
-            np.save("Track_Percentage_Imputation.npy",Track_Percentage_Imputation)
-    print("Percentage of data suggested for imputation: " + str(np.round((Track_Type_2_Error_Inds[Imputation_Cycle-1][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
     if Imputation_Cycle < Num_Cycles:
-        Track_Type_2_Error_Inds = Track_Type_2_Error_Inds[0:Imputation_Cycle]
+        Track_Imputation_Steps = Track_Imputation_Steps[0:Imputation_Cycle]
         Track_Percentage_Imputation = Track_Percentage_Imputation[:,0:Imputation_Cycle]
         Track_Cell_Uncertainties = Track_Cell_Uncertainties[0:(Imputation_Cycle-1),:]
+    # Re-align inds to original data prior to Min_Clust_Size subsetting
+    for i in np.arange(1,Track_Imputation_Steps.shape[0]):
+        Track_Imputation_Steps[i][0] = (Track_Imputation_Steps[i][0][0],Keep_Features[Track_Imputation_Steps[i][0][1]])
+        Track_Imputation_Steps[i][1] = (Track_Imputation_Steps[i][1][0],Keep_Features[Track_Imputation_Steps[i][1][1]])
+        Track_Imputation_Steps[i][2] = (Track_Imputation_Steps[i][2][0],Keep_Features[Track_Imputation_Steps[i][2][1]])
+        Track_Imputation_Steps[i][3] = (Track_Imputation_Steps[i][3][0],Keep_Features[Track_Imputation_Steps[i][3][1]])
     if Auto_Save == 1:
-        np.save("Track_Type_2_Error_Inds.npy",Track_Type_2_Error_Inds)
+        np.save("Track_Imputation_Steps.npy",Track_Imputation_Steps)
         np.save("Track_Cell_Uncertainties.npy",Track_Cell_Uncertainties)
         np.save("Track_Percentage_Imputation.npy",Track_Percentage_Imputation)
-    return Track_Type_2_Error_Inds, Track_Percentage_Imputation, Track_Cell_Uncertainties
+    return Track_Imputation_Steps, Track_Percentage_Imputation, Track_Cell_Uncertainties
 
 
 def FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality):
@@ -114,6 +147,7 @@ def FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     Permutables[Permutables < Min_Clust_Size] = np.nan
     print("Calculating Divergence Matrix.")
     Type_1_Error_Divergences = Parallel_Calculate_Cell_Divergences(1,Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)
+    Cell_Uncertainties = np.sum(Type_1_Error_Divergences,axis=1)
     print("Identifying unreliable data points via half normal distribution.")
     # Use half normal distribution of normalised divergent points to suggest which points should be re-evaluated
     Use_Inds = np.where(Minority_Group_Matrix != 0)
@@ -124,10 +158,7 @@ def FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     # Identify points that diverge in a statistically significant way
     Pass_Threshold = np.where(halfnorm.cdf(zscores) >= Divergences_Significance_Cut_Off)[0]
     Type_1_Error_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
-    # Measure Cell Uncertainties
-    Type_1_Error_Divergences[Minority_Group_Matrix == 0] = np.nan
-    Cell_Uncertainties = np.nanmean(Type_1_Error_Divergences,axis=1) 
-    return Type_1_Error_Inds, Cell_Uncertainties
+    return Type_1_Error_Inds, Switch_State_Inidicies, Cell_Uncertainties
 
 
 def FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality): 
@@ -142,6 +173,7 @@ def FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     Permutables[Permutables < Min_Clust_Size] = np.nan
     print("Calculating Divergence Matrix.")   
     Type_2_Error_Divergences = Parallel_Calculate_Cell_Divergences(2,Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)     
+    Cell_Uncertainties = np.sum(Type_2_Error_Divergences,axis=1)
     print("Identifying data points for imputation via half normal distribution")
     # Use half normal distribution of normalised divergent points to suggest which points should be re-evaluated
     Use_Inds = np.where(Minority_Group_Matrix == 0)
@@ -151,7 +183,7 @@ def FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     # Identify points that diverge in a statistically significant way
     Pass_Threshold = np.where(halfnorm.cdf(zscores) >= Divergences_Significance_Cut_Off)[0]
     Type_2_Error_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
-    return Type_2_Error_Inds
+    return Type_2_Error_Inds, Switch_State_Inidicies, Cell_Uncertainties
 
 
 def FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality):
@@ -175,7 +207,23 @@ def FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     # Identify points that diverge in a statistically significant way
     Pass_Threshold = np.where(halfnorm.cdf(zscores) >= Divergences_Significance_Cut_Off)[0]
     Type_1_Error_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
-    return Type_1_Error_Inds
+    return Type_1_Error_Inds, Switch_State_Inidicies
+
+
+def Track_Changes(Switch_State_Inidicies_1,Switch_State_Inidicies_2,Binarised_Input_Matrix):
+    # Flip genes states back where required
+    Minority_Group_Matrix[:,Switch_State_Inidicies_1] = (Minority_Group_Matrix[:,Switch_State_Inidicies_1] * -1) + 1
+    Minority_Group_Matrix[:,Switch_State_Inidicies_2] = (Minority_Group_Matrix[:,Switch_State_Inidicies_2] * -1) + 1
+    # Identify what has changed compared to initial data
+    State_Changes = Binarised_Input_Matrix - Minority_Group_Matrix
+    # Identify spurious active expression points
+    False_Positive_Inds = np.where(State_Changes == 1)
+    # Identify spurious inactive expression points
+    False_Negative_Inds = np.where(State_Changes == -1)
+    # Track Cell Uncertainties
+    Cell_Uncertainties = np.sum(State_Changes != 0,axis=1)
+    return False_Positive_Inds, False_Negative_Inds, Cell_Uncertainties
+
 
 
 ### Here we have all of FFAVES subfunctions that are needed to calculate ES scores. ###
@@ -280,22 +328,15 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             Sort_Genes = Minority_Group_Matrix[np.ix_(Fixed_Gene_Minority_States,Scenario_1_Inds[Informative_Genes])]
             Scenario_1_Divergences = np.zeros(Cell_Cardinality)
             Scenario_1_Divergences[Fixed_Gene_Minority_States] = np.dot(Sort_Genes==0,RG_QG_Divergences[Informative_Genes])
-            # ### Type 1 Error Scenario 2) Fixed RG, SD = -1 and G1 > G2 ###
-            # Scenario_2_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality > Permutables))[0]
-            # Split_Direction = -1
-            # Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_RG_Sort_Values(1,Split_Direction,Max_Entropy_Permutation[Scenario_2_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_2_Inds],Min_Entropy_ID_1[Scenario_2_Inds],Min_Entropy_ID_2[Scenario_2_Inds],Split_Permute_Value[Scenario_2_Inds])
+            ### Type 1 Error Scenario 2) Fixed RG, SD = -1 and G1 > G2 ###
+            Scenario_2_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality > Permutables))[0]
+            Split_Direction = -1
+            Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_RG_Sort_Values(1,Split_Direction,Max_Entropy_Permutation[Scenario_2_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_2_Inds],Min_Entropy_ID_1[Scenario_2_Inds],Min_Entropy_ID_2[Scenario_2_Inds],Split_Permute_Value[Scenario_2_Inds])
             # ## Calculate Divergence Information
-            # Sort_Genes = Minority_Group_Matrix[:,Scenario_2_Inds]
-            # Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
-            # # In this scenario we are looking for where minority groups overlap (equals 2)
-            # Sort_Genes[Sort_Genes != 2] = 0
-            # Sort_Genes[Sort_Genes == 2] = 1
             # # In scenario 2 we include the gap
             # Divergences = Split_Permute_Entropies
-            # # Identify how many cells overlap for each QG/RG pair.
-            # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
             # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Cell_Divergences = Divergences / Num_Divergent_Cell[Scenario_2_Inds]
             # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             # Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_2_Inds]
             # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -304,13 +345,13 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # # Null/Ignore points that aren't usable.
             # RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
             # RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
-            # # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
-            # # Null these data points by setting all overlaps to 0.
-            # Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
-            # Sort_Genes[:,Uninformative_Genes] = 0 
-            # # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
-            # # divergence for each cell.
-            # Scenario_2_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
+            # # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed,
+            # # hence ignore them.
+            # Informative_Genes = np.where(RG_QG_Divergences >= 0)[0]
+            # # Get Overlap Matrix
+            # Sort_Genes = Minority_Group_Matrix[np.ix_(Fixed_Gene_Minority_States,Scenario_2_Inds[Informative_Genes])]
+            # Scenario_2_Divergences = np.zeros(Cell_Cardinality)
+            # Scenario_2_Divergences[Fixed_Gene_Minority_States] = np.dot(Sort_Genes,RG_QG_Divergences[Informative_Genes])
             ### Type 1 Error Scenario 3) Fixed RG, SD = -1 and G1 <= G2 ###
             Scenario_3_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality <= Permutables))[0]
             Split_Direction = -1
@@ -352,22 +393,14 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
             # Num_Divergent_Cell
             Num_Divergent_Cell = Minority_Group_Cardinality - Split_Permute_Value            
-            ### Type 1 Error Scenario 4) Fixed QG, SD = 1 and G1 <= G2 ###
+            # ## Type 1 Error Scenario 4) Fixed QG, SD = 1 and G1 <= G2 ###
             # Scenario_4_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality > Permutable))[0]
             # Split_Direction = 1
             # Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_4_Inds],Minority_Group_Cardinality[Scenario_4_Inds],Majority_Group_Cardinality[Scenario_4_Inds],Min_Entropy_ID_1[Scenario_4_Inds],Min_Entropy_ID_2[Scenario_4_Inds],Split_Permute_Value[Scenario_4_Inds])
-            # ## Calculate Divergence Information
-            # Sort_Genes = Minority_Group_Matrix[:,Scenario_4_Inds]
-            # Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
-            # # In this scenario we are looking for where minority groups overlap (equals 2)
-            # Sort_Genes[Sort_Genes != -1] = 0
-            # Sort_Genes[Sort_Genes == -1] = 1
-            # # In scenario 3 we include the gap
+            # # In scenario 4 we include the gap
             # Divergences = Split_Permute_Entropies
-            # # Identify how many cells overlap for each QG/RG pair.
-            # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
             # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Cell_Divergences = Divergences / Split_Permute_Value[Scenario_4_Inds]
             # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             # Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_4_Inds] - Max_Entropy_Permutation[Scenario_4_Inds]
             # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -378,27 +411,20 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
             # # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
             # # Null these data points by setting all overlaps to 0.
-            # Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
-            # Sort_Genes[:,Uninformative_Genes] = 0 
-            # # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
-            # # divergence for each cell.
-            # Scenario_4_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
+            # Informative_Genes = np.where(RG_QG_Divergences >= 0)[0]
+            # # Get Overlap Matrix
+            # Sort_Genes = Minority_Group_Matrix[np.ix_(Fixed_Gene_Minority_States,Scenario_4_Inds[Informative_Genes])]
+            # Scenario_4_Divergences = np.zeros(Cell_Cardinality)
+            # Scenario_4_Divergences[Fixed_Gene_Minority_States] = np.dot(Sort_Genes==0,RG_QG_Divergences[Informative_Genes])
             # ### Type 1 Error Scenario 5) Fixed QG, SD = -1 and G1 <= G2 ###
             # Scenario_5_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality > Permutable))[0]
             # Split_Direction = -1
             # Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_5_Inds],Minority_Group_Cardinality[Scenario_5_Inds],Majority_Group_Cardinality[Scenario_5_Inds],Min_Entropy_ID_1[Scenario_5_Inds],Min_Entropy_ID_2[Scenario_5_Inds],Split_Permute_Value[Scenario_5_Inds])
             # ## Calculate Divergence Information
-            # Sort_Genes = Minority_Group_Matrix[:,Scenario_5_Inds]
-            # Sort_Genes = Sort_Genes + np.tile((Gene_States),(Sort_Genes.shape[1],1)).T
-            # # In this scenario we are looking for where minority groups overlap (equals 2)
-            # Sort_Genes[Sort_Genes != 2] = 0
-            # Sort_Genes[Sort_Genes == 2] = 1
-            # # In scenario 3 we include the gap
+            # # In scenario 5 we include the gap
             # Divergences = Split_Permute_Entropies
-            # # Identify how many cells overlap for each QG/RG pair.
-            # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
             # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Cell_Divergences = Divergences / Split_Permute_Value[Scenario_5_Inds]
             # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             # Max_Num_Cell_Divergences = Max_Entropy_Permutation[Scenario_5_Inds]
             # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
@@ -409,12 +435,12 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
             # # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
             # # Null these data points by setting all overlaps to 0.
-            # Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
-            # Sort_Genes[:,Uninformative_Genes] = 0 
-            # # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
-            # # divergence for each cell.
-            # Scenario_5_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
-            ### Type 1 Error Scenario 6) Fixed QG, SD = -1 and G1 <= G2 ###
+            # Informative_Genes = np.where(RG_QG_Divergences >= 0)[0]
+            # # Get Overlap Matrix
+            # Sort_Genes = Minority_Group_Matrix[np.ix_(Fixed_Gene_Minority_States,Scenario_5_Inds[Informative_Genes])]
+            # Scenario_5_Divergences = np.zeros(Cell_Cardinality)
+            # Scenario_5_Divergences[Fixed_Gene_Minority_States] = np.dot(Sort_Genes,RG_QG_Divergences[Informative_Genes])
+            ## Type 1 Error Scenario 6) Fixed QG, SD = -1 and G1 <= G2 ###
             Scenario_6_Inds = np.where(np.logical_and(Split_Directions == -1, Minority_Group_Cardinality <= Permutable))[0]
             Split_Direction = -1
             Split_Permute_Entropies, Max_Permuation_Entropies = Calculate_Fixed_QG_Sort_Values(1,Split_Direction,Permutable,Max_Entropy_Permutation[Scenario_6_Inds],Minority_Group_Cardinality[Scenario_6_Inds],Majority_Group_Cardinality[Scenario_6_Inds],Min_Entropy_ID_1[Scenario_6_Inds],Min_Entropy_ID_2[Scenario_6_Inds],Split_Permute_Value[Scenario_6_Inds])
@@ -439,7 +465,10 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             Scenario_6_Divergences = np.zeros(Cell_Cardinality)
             Scenario_6_Divergences[Fixed_Gene_Minority_States] = np.dot(Sort_Genes,RG_QG_Divergences[Informative_Genes])
              ##
-            Type_1_Error_Divergences = (Scenario_1_Divergences+Scenario_3_Divergences+Scenario_6_Divergences)#+Scenario_4_Divergences+Scenario_5_Divergences+Scenario_6_Divergences)
+            Type_1_Error_Divergences = (Scenario_1_Divergences+Scenario_3_Divergences+Scenario_6_Divergences)
+            #Type_1_Error_Divergences = (Scenario_1_Divergences+Scenario_2_Divergences+Scenario_3_Divergences)
+            #Type_1_Error_Divergences = (Scenario_4_Divergences+Scenario_5_Divergences+Scenario_6_Divergences)
+            #Type_1_Error_Divergences = (Scenario_1_Divergences+Scenario_2_Divergences+Scenario_3_Divergences+Scenario_4_Divergences+Scenario_5_Divergences+Scenario_6_Divergences)
             return Type_1_Error_Divergences
         if Error_Type == 2: # Caluclate divergences for each Type 2 (false negative) error scenarios.
             # ##### Fixed RG Caclulations #####
@@ -457,6 +486,8 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # Min_Entropy_ID_2[np.where(Check_Fits_Group_1 < 0)[0]] = Minority_Group_Cardinality
             # # Split_Permute_Value is the overlap of minority states that we actually observe in the data.
             # Split_Permute_Value = Reference_Gene_Minority_Group_Overlaps
+            # # Num_Divergent_Cell
+            # Num_Divergent_Cell = Minority_Group_Cardinality - Split_Permute_Value
             # # Identify Split Direction (whether the observed arrangment is sorting towards the global minimum entropy or not. I.e. is the QG sorting into the
             # # minority or majority group of the RG.)
             # Sort_Out_Of_Inds = np.where((Split_Permute_Value - Max_Entropy_Permutation) < 0)[0]
@@ -468,33 +499,23 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             # Scenario_1_Inds = np.where(np.logical_and(Split_Directions == 1, Minority_Group_Cardinality > Permutables))[0]
             # Split_Direction = 1
             # Split_Permute_Entropies, Max_Permuation_Entropies, Minimum_Entropies = Calculate_Fixed_RG_Sort_Values(2,Split_Direction,Max_Entropy_Permutation[Scenario_1_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_1_Inds],Min_Entropy_ID_1[Scenario_1_Inds],Min_Entropy_ID_2[Scenario_1_Inds],Split_Permute_Value[Scenario_1_Inds])
-            # ## Calculate Divergence Information
-            # Sort_Genes = Minority_Group_Matrix[:,Scenario_1_Inds]
-            # Sort_Genes = Sort_Genes + np.tile((Gene_States*-1),(Sort_Genes.shape[1],1)).T
-            # # In this scenario we are looking for where the QG remains 1
-            # Sort_Genes[Sort_Genes != 1] = 0
             # # In scenario 1 we don't include the gap
             # Divergences = Split_Permute_Entropies - Minimum_Entropies
-            # # Identify how many cells overlap for each QG/RG pair.
-            # Divergent_Cell_Cardinalities = np.sum(Sort_Genes,axis=0)
             # # Find the average divergence for each cell that is diverging from the optimal sort.
-            # Cell_Divergences = Divergences / Divergent_Cell_Cardinalities
+            # Cell_Divergences = Divergences / Num_Divergent_Cell[Scenario_1_Inds]
             # # Calculate how much divergence each cell would have if the RG/QG system was at the maximum entropy arrangment.
             # Max_Num_Cell_Divergences = Min_Entropy_ID_2[Scenario_1_Inds] - Max_Entropy_Permutation[Scenario_1_Inds]
             # Minimum_Background_Noise = Max_Permuation_Entropies/Max_Num_Cell_Divergences
             # # Deduct the observed average divergence per cell from average divergence per cell in the maximum entorpy arrangment.
             # RG_QG_Divergences = Cell_Divergences - Minimum_Background_Noise
-            # # Null/Ignore points that aren't usable.
-            # RG_QG_Divergences[np.isinf(RG_QG_Divergences)] = 0
-            # RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
             # # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed.
             # # Null these data points by setting all overlaps to 0.
-            # Uninformative_Genes = np.where(RG_QG_Divergences <= 0)[0]
-            # Sort_Genes[:,Uninformative_Genes] = 0 
-            # # Mutiply the diverging cells by their average divergence and sum all the divergences for each QG/RG pair of each cell, to get a total
-            # # divergence for each cell.
-            # Scenario_1_Divergences = np.sum((Sort_Genes*RG_QG_Divergences),axis=1)
-            ##### Fixed QG Caclulations #####
+            # Informative_Genes = np.where(RG_QG_Divergences >= 0)[0]
+            # # Get Overlap Matrix
+            # Sort_Genes = Minority_Group_Matrix[np.ix_(Fixed_Gene_Majority_States,Scenario_1_Inds[Informative_Genes])]
+            # Scenario_1_Divergences = np.zeros(Cell_Cardinality)
+            # Scenario_1_Divergences[Fixed_Gene_Majority_States] = np.dot(Sort_Genes,RG_QG_Divergences[Informative_Genes])
+            #### Fixed QG Caclulations #####
             # Extract the group 1 and group 2 cardinalities. Group 1 is always the minority group in this set up.
             Minority_Group_Cardinality = Permutables
             Majority_Group_Cardinality = Cell_Cardinality - Permutables
@@ -542,7 +563,8 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             Scenario_2_Divergences = np.zeros(Cell_Cardinality)
             Scenario_2_Divergences[Fixed_Gene_Majority_States] = np.dot(Sort_Genes,RG_QG_Divergences[Informative_Genes])
             ##
-            Type_2_Error_Divergences = (Scenario_2_Divergences)#+Scenario_1_Divergences)
+            #Type_2_Error_Divergences = (Scenario_1_Divergences)
+            Type_2_Error_Divergences = (Scenario_2_Divergences)
             return Type_2_Error_Divergences
     else:
         # When a feature cannot be used just give all points a value of 0.
@@ -653,7 +675,7 @@ def Calc_RG_Entropies(x,Group1_Cardinality,Group2_Cardinality,Permutables):
 
 ## Retreive the Informations Gains Matrix and Split Weights Matrix for a given cycle ##
 
-def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Suggested_Type_2_Error_Inds, Min_Clust_Size = 5, Divergences_Significance_Cut_Off = 0.99, Use_Cores = -1, Auto_Save = 1):
+def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Track_Imputation_Steps, Chosen_Cycle = -1, Min_Clust_Size = 5, Use_Cores = -1, Auto_Save = 1, Observe_Directionality = 0):
     # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -667,52 +689,69 @@ def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Suggested_Type_2_Error_I
     Cell_Cardinality = Binarised_Input_Matrix.shape[0]
     #global Gene_Cardinality
     Gene_Cardinality = Binarised_Input_Matrix.shape[1]
+    # Convert Binarised_Input_Matrix into Minority_Group_Matrix
+    Permutables, Switch_State_Inidicies = Find_Permutations(Binarised_Input_Matrix,Cell_Cardinality)
+    Binarised_Input_Matrix[:,Switch_State_Inidicies] = (Binarised_Input_Matrix[:,Switch_State_Inidicies] * -1) + 1  
     # Set up Minority_Group_Matrix
     global Minority_Group_Matrix
     # Track what cycle FFAVES is on.
     print("Number of cells: " + str(Cell_Cardinality))
     print("Number of genes: " + str(Gene_Cardinality))
     Minority_Group_Matrix = copy.copy(Binarised_Input_Matrix)
-    # Convert suggested imputation points to correct state.
-    Minority_Group_Matrix[Suggested_Type_2_Error_Inds] = (Minority_Group_Matrix[Suggested_Type_2_Error_Inds] - 1) * -1 
-    ### Step 1 of FFAVES is to identify and temporarily remove spurious Minority Group expression states
-    Type_1_Error_Inds, Cell_Uncertainties = FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
-    # Temporarily switch their state. This switch is only temporary because this version of FFAVES works on the assumption that 
-    # false postives in scRNA-seq data are incredibly unlikely, and hence leaky gene expression may be genuine biological heterogineity.
-    # However, we remove it at this stage to try and keep the imputation strategy cleaner and more conservative in suggesting points to impute.
-    Minority_Group_Matrix[Type_1_Error_Inds] = (Minority_Group_Matrix[Type_1_Error_Inds] - 1) * -1
-    ### Step 2 of FFAVES is to identify which majority states points are spurious
-    Type_2_Error_Inds = FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
-    ###
-    Minority_Group_Matrix[Type_2_Error_Inds] = (Minority_Group_Matrix[Type_2_Error_Inds] - 1) * -1
-    print("Calculating Entropy Sort Matricies.")
-    print("Identifying Sort Info for calculations.")
+    # Convert suggested imputation points to correct state for chosen cycle.
+    if Chosen_Cycle >= 0:
+        Suggested_Impute_Inds = Track_Imputation_Steps[Chosen_Cycle][3]
+        Minority_Group_Matrix[Suggested_Impute_Inds] = (Minority_Group_Matrix[Suggested_Impute_Inds] - 1) * -1 
+        Step_1_Type_1_Error_Inds = Track_Imputation_Steps[Chosen_Cycle+1][0]
+        Minority_Group_Matrix[Step_1_Type_1_Error_Inds] = (Minority_Group_Matrix[Step_1_Type_1_Error_Inds] - 1) * -1
+    if Chosen_Cycle < 0:
+        Suggested_Impute_Inds = Track_Imputation_Steps[Chosen_Cycle-1][3]
+        Minority_Group_Matrix[Suggested_Impute_Inds] = (Minority_Group_Matrix[Suggested_Impute_Inds] - 1) * -1 
+        Step_1_Type_1_Error_Inds = Track_Imputation_Steps[Chosen_Cycle][0]
+        Minority_Group_Matrix[Step_1_Type_1_Error_Inds] = (Minority_Group_Matrix[Step_1_Type_1_Error_Inds] - 1) * -1
+    Cycle_Suggested_Imputations = np.where(Binarised_Input_Matrix != Minority_Group_Matrix)
+    # Type_2_Error_Inds = Track_Imputation_Steps[Chosen_Cycle][1]
+    # Flat_Step_2_Inds = np.ravel_multi_index(Type_2_Error_Inds, Binarised_Input_Matrix.shape)
+    # Step_3_Type_1_Error_Inds = Track_Imputation_Steps[Chosen_Cycle][2]
+    # Flat_Step_3_Inds = np.ravel_multi_index(Step_3_Type_1_Error_Inds, Binarised_Input_Matrix.shape)
+    # Flat_Start_Of_Cycle_Imputations = np.ravel_multi_index(Suggested_Impute_Inds, Binarised_Input_Matrix.shape)
+    # All_Type_2_Error_Impute_Inds = np.unique(np.append(Flat_Start_Of_Cycle_Imputations, Flat_Step_2_Inds))
+    # Ignore_Imputations = np.where(np.isin(All_Type_2_Error_Impute_Inds,Flat_Step_3_Inds))[0]
+    # All_Type_2_Error_Impute_Inds = np.delete(All_Type_2_Error_Impute_Inds,Ignore_Imputations)
+    # Ignore_Imputations = np.where(np.isin(All_Type_2_Error_Impute_Inds,Flat_Start_Of_Cycle_Imputations))[0]
+    # All_Type_2_Error_Impute_Inds = np.delete(All_Type_2_Error_Impute_Inds,Ignore_Imputations)
+    # All_Type_2_Error_Impute_Inds = np.unravel_index(All_Type_2_Error_Impute_Inds,Binarised_Input_Matrix.shape)    
+    # Minority_Group_Matrix[All_Type_2_Error_Impute_Inds] = (Minority_Group_Matrix[All_Type_2_Error_Impute_Inds] - 1) * -1
     # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
     Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
     # Switch Minority/Majority states to 0/1 where necessary. 
     Minority_Group_Matrix[:,Switch_State_Inidicies] = (Minority_Group_Matrix[:,Switch_State_Inidicies] * -1) + 1
-    # Note Converged Minority State Inds
-    Converged_Minority_State_Inds = np.where(Minority_Group_Matrix == 1)
     # Calculate minority group overlap matrix
     Reference_Gene_Minority_Group_Overlaps = Parallel_Find_Minority_Group_Overlaps(Use_Cores,Gene_Cardinality)
     Permutables[Permutables < Min_Clust_Size] = np.nan
     print("Performing Sort Calculations")
-    Information_Gains, Split_Weights = Parallel_Calculate_ES_Matricies(Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)
+    with np.errstate(divide='ignore',invalid='ignore'):
+        Information_Gains, Split_Weights = Parallel_Calculate_ES_Matricies(Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores,Observe_Directionality)
+    if Observe_Directionality == 0:
+        Double_Counts = np.where(np.logical_and(Information_Gains != 0, Information_Gains.T != 0))
+        Information_Gains = Information_Gains + Information_Gains.T
+        Information_Gains[Double_Counts] = Information_Gains[Double_Counts] / 2
+        Split_Weights = Split_Weights + Split_Weights.T
+        Split_Weights[Double_Counts] = Split_Weights[Double_Counts] / 2
     if Auto_Save == 1:
         np.save("Information_Gains.npy",Information_Gains)
         np.save("Split_Weights.npy",Split_Weights)
-        np.save("Converged_Minority_State_Inds.npy",Converged_Minority_State_Inds)
-        np.save("Type_1_Error_Inds.npy",Type_1_Error_Inds)
-    return Information_Gains, Split_Weights, Type_1_Error_Inds
+        np.save("Cycle_Suggested_Imputations.npy",Cycle_Suggested_Imputations)
+    return Information_Gains, Split_Weights, Cycle_Suggested_Imputations
 
 
-def Parallel_Calculate_ES_Matricies(Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores):
+def Parallel_Calculate_ES_Matricies(Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores,Observe_Directionality):
     Feature_Inds = np.arange(Gene_Cardinality)
     Pass_Info_To_Cores = np.concatenate((Feature_Inds.reshape(1,Feature_Inds.shape[0]),Reference_Gene_Minority_Group_Overlaps))
     Pass_Info_To_Cores = np.transpose(Pass_Info_To_Cores)
     # Parrallel calculate information gains matrix
     pool = multiprocessing.Pool(processes = Use_Cores)
-    Results = pool.map(partial(Calculate_ES_Matricies,Cell_Cardinality=Cell_Cardinality,Permutables=Permutables), Pass_Info_To_Cores)
+    Results = pool.map(partial(Calculate_ES_Matricies,Cell_Cardinality=Cell_Cardinality,Permutables=Permutables,Observe_Directionality=Observe_Directionality), Pass_Info_To_Cores)
     pool.close()
     pool.join()
     Results = np.asarray(Results)
@@ -728,7 +767,7 @@ def Parallel_Calculate_ES_Matricies(Cell_Cardinality,Gene_Cardinality,Permutable
     return Information_Gains, Split_Weights
 
 
-def Calculate_ES_Matricies(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
+def Calculate_ES_Matricies(Pass_Info_To_Cores,Cell_Cardinality,Permutables,Observe_Directionality):
     with np.errstate(divide='ignore',invalid='ignore'):
         # Extract which gene calculations are centred around
         Feature_Inds = int(Pass_Info_To_Cores[0])
@@ -756,13 +795,27 @@ def Calculate_ES_Matricies(Pass_Info_To_Cores,Cell_Cardinality,Permutables):
             Sort_Out_Of_Inds = np.where((Split_Permute_Value - Max_Entropy_Permutation) < 0)[0]
             # Assign Split Directions for each QG/RG pair to a vector.
             Split_Directions = np.repeat(1,Permutables.shape[0])
-            Split_Directions[Sort_Out_Of_Inds] = -1     
-            Information_Gains, Split_Weights = Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value)
+            Split_Directions[Sort_Out_Of_Inds] = -1
+            #
+            if Observe_Directionality == 0:
+                Scenario_Inds = np.where(Minority_Group_Cardinality <= Permutables)[0]
+                if Scenario_Inds.shape[0] > 0:
+                    Information_Gains_Temp, Split_Weights_Temp = Calculate_All_Fixed_RG_Sort_Values(Split_Directions[Scenario_Inds],Max_Entropy_Permutation[Scenario_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Scenario_Inds],Min_Entropy_ID_1[Scenario_Inds],Min_Entropy_ID_2[Scenario_Inds],Split_Permute_Value[Scenario_Inds])
+                    Information_Gains = np.zeros(Permutables.shape[0])
+                    Information_Gains[Scenario_Inds] = Information_Gains_Temp
+                    Information_Gains[Scenario_Inds] = Information_Gains[Scenario_Inds] * Split_Directions[Scenario_Inds]
+                    Split_Weights = np.zeros(Permutables.shape[0])
+                    Split_Weights[Scenario_Inds] = Split_Weights_Temp
+                else:
+                    Information_Gains = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
+                    Split_Weights = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
+            else:
+                Information_Gains, Split_Weights = Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables,Min_Entropy_ID_1,Min_Entropy_ID_2,Split_Permute_Value)
+                Information_Gains = Information_Gains * Split_Directions
         else:
             Information_Gains = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
             Split_Weights = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
-            Split_Directions = np.zeros(Reference_Gene_Minority_Group_Overlaps.shape[0])
-        Results.append(Information_Gains*Split_Directions)
+        Results.append(Information_Gains)
         Results.append(Split_Weights)
     return Results
 
@@ -772,15 +825,15 @@ def Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,
     Max_Permuation_Entropies = Calc_RG_Entropies(Max_Entropy_Permutation,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables)
     Sort_Into_Inds = np.where(Split_Directions == 1)[0]
     Sort_Out_Of_Inds = np.where(Split_Directions == -1)[0]
+    Minimum_Entropies = np.zeros(Permutables.shape[0])
     if Sort_Into_Inds.shape[0] > 0:
         # The minimum entropy if none of the QG minority states are in the RG minority group.
         Sort_Into_Minimum_Entropies = Calc_RG_Entropies(Min_Entropy_ID_2[Sort_Into_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Sort_Into_Inds])
+        Minimum_Entropies[Sort_Into_Inds] = Sort_Into_Minimum_Entropies
     if Sort_Out_Of_Inds.shape[0] > 0:
         # The minimum entropy if the RG minority group has as many of the QG minority state samples in it as possible.
         Sort_Out_Of_Minimum_Entropies = Calc_RG_Entropies(Min_Entropy_ID_1[Sort_Out_Of_Inds],Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables[Sort_Out_Of_Inds])  
-    Minimum_Entropies = np.zeros(Permutables.shape[0])
-    Minimum_Entropies[Sort_Into_Inds] = Sort_Into_Minimum_Entropies
-    Minimum_Entropies[Sort_Out_Of_Inds] = Sort_Out_Of_Minimum_Entropies
+        Minimum_Entropies[Sort_Out_Of_Inds] = Sort_Out_Of_Minimum_Entropies       
     # The entropy of the arrangment observed in the data set.
     Split_Permute_Entropies = Calc_RG_Entropies(Split_Permute_Value,Minority_Group_Cardinality,Majority_Group_Cardinality,Permutables)
     # Calculate ES parabola properties
@@ -796,7 +849,7 @@ def Calculate_All_Fixed_RG_Sort_Values(Split_Directions,Max_Entropy_Permutation,
 
 ## Optimise the Thresholds by reducing the error of discrete states between the original data set and the converged structure ##
 
-def Parallel_Optimise_Discretisation_Thresholds(Original_Data,Binarised_Input_Matrix,Suggested_Impute_Inds,Use_Cores=-1,Auto_Save=1):
+def Parallel_Optimise_Discretisation_Thresholds(Original_Data,Binarised_Input_Matrix,Track_Imputation_Steps,Use_Cores=-1,Auto_Save=1):
      # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -805,8 +858,10 @@ def Parallel_Optimise_Discretisation_Thresholds(Original_Data,Binarised_Input_Ma
             Use_Cores = 1
     print("Cores Avaiblable: " + str(Cores_Available))
     print("Cores Used: " + str(Use_Cores))
-    # Convert suggested imputation points to correct state.
-    Binarised_Input_Matrix[Suggested_Impute_Inds] = np.nan
+    # Convert suggested imputation points to unknown state.
+    Binarised_Input_Matrix[Track_Imputation_Steps[0]] = (Binarised_Input_Matrix[Track_Imputation_Steps[0]]*-1) + 1
+    Binarised_Input_Matrix[Track_Imputation_Steps[1]] = (Binarised_Input_Matrix[Track_Imputation_Steps[1]]*-1) + 1
+    Binarised_Input_Matrix[Track_Imputation_Steps[2]] = (Binarised_Input_Matrix[Track_Imputation_Steps[2]]*-1) + 1
     Paired = [[]] * Original_Data.shape[1]
     for i in np.arange(Original_Data.shape[1]):
         Paired[i] = np.stack((Original_Data[:,i],Binarised_Input_Matrix[:,i]))       
