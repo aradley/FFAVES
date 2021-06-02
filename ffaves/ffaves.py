@@ -21,6 +21,8 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
     print("Cores Used: " + str(Use_Cores))
     # Remove genes below Min_Clust_Size
     Keep_Features = np.where(np.sum(Binarised_Input_Matrix,axis=0) >= Min_Clust_Size)[0]
+    Ignore = np.where(np.sum(Binarised_Input_Matrix,axis=0) >= (Binarised_Input_Matrix.shape[1]-Min_Clust_Size))[0] 
+    Keep_Features = np.delete(Keep_Features,np.where(np.isin(Keep_Features,Ignore))[0])
     if Keep_Features.shape[0] < Binarised_Input_Matrix.shape[1]:
         print("Ignoring " + str(Binarised_Input_Matrix.shape[1]-Keep_Features.shape[0]) + " features which are below the Min_Clust_Threshold")
         Binarised_Input_Matrix = Binarised_Input_Matrix[:,Keep_Features]
@@ -240,7 +242,6 @@ def Parallel_Calculate_Cell_Divergences(Error_Type,Cell_Cardinality,Gene_Cardina
     pool.close()
     pool.join()
     if Error_Type != "2_Intentional_Error":
-        # Retreive Fixed_QG_Neg_SD_Divergences and put the features back in the original feature ordering.
         Divergence_Matrix = np.stack(Result,axis=1)
     else:
         Divergence_Matrix = np.asarray(Result)
@@ -627,9 +628,6 @@ def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Track_Imputation_Steps, 
     Binarised_Input_Matrix[:,Switch_State_Inidicies] = (Binarised_Input_Matrix[:,Switch_State_Inidicies] * -1) + 1  
     # Set up Minority_Group_Matrix
     global Minority_Group_Matrix
-    # Track what cycle FFAVES is on.
-    print("Number of cells: " + str(Cell_Cardinality))
-    print("Number of genes: " + str(Gene_Cardinality))
     Minority_Group_Matrix = copy.copy(Binarised_Input_Matrix)
     # Convert suggested imputation points to correct state for chosen cycle.
     if Chosen_Cycle >= 0:
@@ -643,6 +641,19 @@ def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Track_Imputation_Steps, 
         Step_1_Type_1_Error_Inds = Track_Imputation_Steps[Chosen_Cycle][0]
         Minority_Group_Matrix[Step_1_Type_1_Error_Inds] = (Minority_Group_Matrix[Step_1_Type_1_Error_Inds] - 1) * -1
     Cycle_Suggested_Imputations = np.where(Binarised_Input_Matrix != Minority_Group_Matrix)
+    # Remove genes below Min_Clust_Size
+    Keep_Features = np.where(np.sum(Minority_Group_Matrix,axis=0) >= Min_Clust_Size)[0]
+    Ignore = np.where(np.sum(Minority_Group_Matrix,axis=0) >= (Minority_Group_Matrix.shape[1]-Min_Clust_Size))[0] 
+    Keep_Features = np.delete(Keep_Features,np.where(np.isin(Keep_Features,Ignore))[0])
+    if Keep_Features.shape[0] < Minority_Group_Matrix.shape[1]:
+        print("Ignoring " + str(Minority_Group_Matrix.shape[1]-Keep_Features.shape[0]) + " features which are below the Min_Clust_Threshold")
+        Minority_Group_Matrix = Minority_Group_Matrix[:,Keep_Features]
+    #global Cell_Cardinality
+    Cell_Cardinality = Minority_Group_Matrix.shape[0]
+    #global Gene_Cardinality
+    Gene_Cardinality = Minority_Group_Matrix.shape[1]   
+    print("Number of cells: " + str(Cell_Cardinality))
+    print("Number of genes: " + str(Gene_Cardinality))
     Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
     # Switch Minority/Majority states to 0/1 where necessary. 
     Minority_Group_Matrix[:,Switch_State_Inidicies] = (Minority_Group_Matrix[:,Switch_State_Inidicies] * -1) + 1
@@ -662,7 +673,8 @@ def Calculate_ES_Sort_Matricies(Binarised_Input_Matrix, Track_Imputation_Steps, 
         np.save("Information_Gains.npy",Information_Gains)
         np.save("Split_Weights.npy",Split_Weights)
         np.save("Cycle_Suggested_Imputations.npy",Cycle_Suggested_Imputations)
-    return Information_Gains, Split_Weights, Cycle_Suggested_Imputations
+        np.save("ES_Matrices_Features_Used_Inds.npy",Keep_Features)
+    return Information_Gains, Split_Weights, Cycle_Suggested_Imputations, Keep_Features
 
 
 def Parallel_Calculate_ES_Matricies(Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores,Observe_Directionality):
@@ -894,11 +906,24 @@ def Estimate_Feature_Importance(Intended_Divergence, Binarised_Input_Matrix, Cyc
     global Minority_Group_Matrix
     print("Number of cells: " + str(Cell_Cardinality))
     print("Number of genes: " + str(Gene_Cardinality))
-    Feature_Divergences = np.zeros((Binarised_Input_Matrix.shape[1],Num_Cycles))
+    Feature_Divergences = []
     for Cycle in np.arange(Num_Cycles):
         print("Cycle Number: " + str(Cycle+1) + " of " + str(Num_Cycles))
         Minority_Group_Matrix = copy.copy(Binarised_Input_Matrix)
         Minority_Group_Matrix[Cycle_Suggested_Imputations] = (Minority_Group_Matrix[Cycle_Suggested_Imputations] * -1) + 1
+        # Remove genes below Min_Clust_Size
+        Keep_Features = np.where(np.sum(Minority_Group_Matrix,axis=0) >= Min_Clust_Size)[0]
+        Ignore = np.where(np.sum(Minority_Group_Matrix,axis=0) >= (Minority_Group_Matrix.shape[1]-Min_Clust_Size))[0] 
+        Keep_Features = np.delete(Keep_Features,np.where(np.isin(Keep_Features,Ignore))[0])
+        if Keep_Features.shape[0] < Minority_Group_Matrix.shape[1]:
+            print("Ignoring " + str(Minority_Group_Matrix.shape[1]-Keep_Features.shape[0]) + " features which are below the Min_Clust_Threshold")
+            Minority_Group_Matrix = Minority_Group_Matrix[:,Keep_Features]
+        #global Cell_Cardinality
+        Cell_Cardinality = Minority_Group_Matrix.shape[0]
+        #global Gene_Cardinality
+        Gene_Cardinality = Minority_Group_Matrix.shape[1]   
+        print("Number of cells: " + str(Cell_Cardinality))
+        print("Number of genes: " + str(Gene_Cardinality))
         Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
         # Switch Minority/Majority states to 0/1 where necessary. 
         Minority_Group_Matrix[:,Switch_State_Inidicies] = (Minority_Group_Matrix[:,Switch_State_Inidicies] * -1) + 1
@@ -915,11 +940,12 @@ def Estimate_Feature_Importance(Intended_Divergence, Binarised_Input_Matrix, Cyc
         Permutables[Permutables < Min_Clust_Size] = np.nan
         with np.errstate(divide='ignore',invalid='ignore'):
             Feature_Divergence = Parallel_Calculate_Cell_Divergences("2_Intentional_Error",Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)
-        Feature_Divergences[:,Cycle] = Feature_Divergence
-    Feature_Divergences = Feature_Divergences / Num_Cycles
+        Feature_Divergences.append(Feature_Divergence)
+    Feature_Divergences = np.asarray(Feature_Divergences)
     if Auto_Save == 1:
         np.save("Feature_Divergences.npy",Feature_Divergences)
-    return Feature_Divergences
+        np.save("Feature_Divergences_Used_Inds.npy",Keep_Features)
+    return Feature_Divergences, Keep_Features
 
 ## Get the Information Gain and Split Weights for each gene in the dataset, for a subset of cells in the data.
 # Main use is to find which gene exists in a specific region of an embedding.
