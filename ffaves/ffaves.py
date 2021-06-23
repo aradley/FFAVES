@@ -10,7 +10,7 @@ from scipy.stats import halfnorm, zscore
 
 ### Here we have the FFAVES wrapper function that executes all the steps of FFAVES. ###
 
-def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_Cut_Off = 0.999, Use_Cores= -1, Num_Cycles = 1, Tolerance = 0.1, Auto_Save = 1):
+def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_Cut_Off = 0.999, Use_Cores= -1, Max_Num_Cycles = 10, Tolerance = 0.1, Auto_Save = 1):
     # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -40,15 +40,15 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
     Imputation_Cycle = 1
     print("Number of cells: " + str(Cell_Cardinality))
     print("Number of genes: " + str(Gene_Cardinality))
-    Track_Percentage_Imputation = np.zeros((3,Num_Cycles+1))
-    Track_Imputation_Steps = np.empty(((Num_Cycles + 1),),dtype="object")
-    Track_Imputation_Steps[...]=[([[]]*3) for _ in range((Num_Cycles + 1))]  
+    Track_Percentage_Imputation = np.zeros((3,Max_Num_Cycles+1))
+    Track_Imputation_Steps = np.empty(((Max_Num_Cycles + 1),),dtype="object")
+    Track_Imputation_Steps[...]=[([[]]*3) for _ in range((Max_Num_Cycles + 1))]  
     # Cell Uncertainties
-    Track_Cell_Uncertainties = np.zeros((Num_Cycles,Cell_Cardinality))
+    Track_Cell_Uncertainties = np.zeros((Max_Num_Cycles,Cell_Cardinality))
     # Set up tolerance tracker
     Covergence_Counter = 0
     All_Impute_Inds = (np.array([]).astype("i"),np.array([]).astype("i"))
-    while Imputation_Cycle <= Num_Cycles and Covergence_Counter < 3:
+    while Imputation_Cycle <= Max_Num_Cycles and Covergence_Counter < 3:
         if Imputation_Cycle > 1:
             print("Percentage of original data suggested as Type 1 Error: " + str(np.round((Track_Imputation_Steps[Imputation_Cycle-1][0][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
             print("Percentage of original data suggested as Type 2 Error: " + str(np.round((Track_Imputation_Steps[Imputation_Cycle-1][2][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")   
@@ -113,14 +113,14 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
         Track_Percentage_Imputation[0,Imputation_Cycle] = (Track_Imputation_Steps[Imputation_Cycle][0][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
         Track_Percentage_Imputation[1,Imputation_Cycle] = (Track_Imputation_Steps[Imputation_Cycle][2][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100
         Track_Percentage_Imputation[2,Imputation_Cycle] = Average_Imputed_Divergence
-        if Imputation_Cycle < Num_Cycles:
+        if Imputation_Cycle < Max_Num_Cycles:
             Imputed_Difference = np.sum(np.absolute(Track_Percentage_Imputation[0:2,Imputation_Cycle] - Track_Percentage_Imputation[0:2,Imputation_Cycle-1]))
             if Imputed_Difference <= Tolerance:
                 Covergence_Counter = Covergence_Counter + 1
             else:
                 Covergence_Counter = 0
         Imputation_Cycle = Imputation_Cycle + 1
-    if Imputation_Cycle < Num_Cycles:
+    if Imputation_Cycle < Max_Num_Cycles:
         Track_Imputation_Steps = Track_Imputation_Steps[0:Imputation_Cycle]
         Track_Percentage_Imputation = Track_Percentage_Imputation[:,0:Imputation_Cycle]
         Track_Cell_Uncertainties = Track_Cell_Uncertainties[0:(Imputation_Cycle-1),:]
@@ -172,19 +172,19 @@ def FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     return Type_2_Error_Inds, Switch_State_Inidicies, Cell_Uncertainties, Average_Imputed_Divergence
 
 
-def Track_Changes(Switch_State_Inidicies_1,Switch_State_Inidicies_2,Binarised_Input_Matrix):
-    # Flip genes states back where required
-    Minority_Group_Matrix[:,Switch_State_Inidicies_1] = (Minority_Group_Matrix[:,Switch_State_Inidicies_1] * -1) + 1
-    Minority_Group_Matrix[:,Switch_State_Inidicies_2] = (Minority_Group_Matrix[:,Switch_State_Inidicies_2] * -1) + 1
-    # Identify what has changed compared to initial data
-    State_Changes = Binarised_Input_Matrix - Minority_Group_Matrix
-    # Identify spurious active expression points
-    False_Positive_Inds = np.where(State_Changes == 1)
-    # Identify spurious inactive expression points
-    False_Negative_Inds = np.where(State_Changes == -1)
-    # Track Cell Uncertainties
-    Cell_Uncertainties = np.sum(State_Changes != 0,axis=1)
-    return False_Positive_Inds, False_Negative_Inds, Cell_Uncertainties
+# def Track_Changes(Switch_State_Inidicies_1,Switch_State_Inidicies_2,Binarised_Input_Matrix):
+#     # Flip genes states back where required
+#     Minority_Group_Matrix[:,Switch_State_Inidicies_1] = (Minority_Group_Matrix[:,Switch_State_Inidicies_1] * -1) + 1
+#     Minority_Group_Matrix[:,Switch_State_Inidicies_2] = (Minority_Group_Matrix[:,Switch_State_Inidicies_2] * -1) + 1
+#     # Identify what has changed compared to initial data
+#     State_Changes = Binarised_Input_Matrix - Minority_Group_Matrix
+#     # Identify spurious active expression points
+#     False_Positive_Inds = np.where(State_Changes == 1)
+#     # Identify spurious inactive expression points
+#     False_Negative_Inds = np.where(State_Changes == -1)
+#     # Track Cell Uncertainties
+#     Cell_Uncertainties = np.sum(State_Changes != 0,axis=1)
+#     return False_Positive_Inds, False_Negative_Inds, Cell_Uncertainties
 
 
 ### Here we have all of FFAVES subfunctions that are needed to calculate ES scores. ###
@@ -790,102 +790,59 @@ def Parallel_Optimise_Discretisation_Thresholds(Original_Data,Binarised_Input_Ma
             Use_Cores = 1
     print("Cores Avaiblable: " + str(Cores_Available))
     print("Cores Used: " + str(Use_Cores))
+    Paired = [[]] * Original_Data.shape[1]
+    Binarised_Input_Matrix[Cycle_Suggested_Imputations] = (Binarised_Input_Matrix[Cycle_Suggested_Imputations] * -1) +1 
+    for i in np.arange(Original_Data.shape[1]):
+        Paired[i] = np.stack((Original_Data[:,i],Binarised_Input_Matrix[:,i]))
     # Convert suggested imputation points to unknown state.
     Binarised_Input_Matrix[Cycle_Suggested_Imputations] = np.nan
-    Paired = [[]] * Original_Data.shape[1]
     for i in np.arange(Original_Data.shape[1]):
-        Paired[i] = np.stack((Original_Data[:,i],Binarised_Input_Matrix[:,i]))       
+        Paired[i] = np.vstack((Paired[i],Binarised_Input_Matrix[:,i])) 
     pool = multiprocessing.Pool(processes = Use_Cores)
     Result = pool.map(Optimise_Discretisation_Thresholds, Paired)
     pool.close()
     pool.join()
     Result = np.asarray(Result,dtype=object)
-    Optimised_Imputations = np.stack(Result[:,0],axis=1)
-    Optimised_Imputations = np.where(Optimised_Imputations == 1)
-    Thresholds = Result[:,1].astype("f")
-    Starting_False_Negatives = Thresholds = Result[:,2]
-    Starting_False_Positives = Thresholds = Result[:,3]
-    Optimal_False_Negatives = Thresholds = Result[:,4]
-    Optimal_False_Positives = Thresholds = Result[:,5]
-    Track_Errors = Result[:,6]
+    Thresholds = Result[:,0]
+    Track_Errors = Result[:,1]
     if Auto_Save == 1:
-        np.save("Optimised_Imputations.npy",Optimised_Imputations)
         np.save("Thresholds.npy",Thresholds)
-        np.save("Starting_False_Negatives.npy",Starting_False_Negatives)
-        np.save("Starting_False_Positives.npy",Starting_False_Positives)
-        np.save("Optimal_False_Negatives.npy",Optimal_False_Negatives)
-        np.save("Optimal_False_Positives.npy",Optimal_False_Positives)
         np.save("Track_Errors.npy",Track_Errors)
-    return Optimised_Imputations, Thresholds, Starting_False_Negatives, Starting_False_Positives, Optimal_False_Negatives, Optimal_False_Positives, Track_Errors
-
+    return Thresholds, Track_Errors
 
 def Optimise_Discretisation_Thresholds(Paired):
     Original_Gene = Paired[0,:]
     Imputed_Gene = Paired[1,:]
-    Imputed_Cells = np.where(np.isnan(Imputed_Gene))[0]
-    Results = [[]] * 7
+    Imputed_Cells = np.where(np.isnan(Paired[2,:]))[0]
+    Results = [[]] * 2
     if Imputed_Cells.shape[0] > 0:
-        False_Negatives = Imputed_Cells[np.where(Original_Gene[Imputed_Cells] == 0)[0]]
-        False_Positives = Imputed_Cells[np.where(Original_Gene[Imputed_Cells] != 0)[0]]
-        # Save starting number of False Negatives
-        Results[2] = False_Negatives.shape[0]
-        # Save starting number of False Positives
-        Results[3] = False_Positives.shape[0]
-        Target_Expression_States = copy.copy(Original_Gene)
-        Target_Expression_States[Target_Expression_States > 0] = 1
-        # 0 = Inactive, 1 = Active. Unlike in ES, the Active/Inactive definition matter.
-        Target_Expression_States[Imputed_Cells] = (Target_Expression_States[Imputed_Cells] * -1) + 1
         Unique_Exspression = np.unique(Original_Gene)
         Min_Error = np.inf
         Track_Errors = np.zeros(Unique_Exspression.shape[0])
         for Thresh in np.arange(Unique_Exspression.shape[0]):
             Threshold = Unique_Exspression[Thresh]
-            Threshold_Expression_States = copy.copy(Original_Gene)
-            Threshold_Expression_States[Threshold_Expression_States < Threshold] = 0
-            Threshold_Expression_States[Threshold_Expression_States != 0] = 1
-            False_Negatives = Imputed_Cells[np.where(Threshold_Expression_States[Imputed_Cells] == 0)[0]]
-            False_Positives = Imputed_Cells[np.where(Threshold_Expression_States[Imputed_Cells] == 1)[0]]
-            Differences = np.absolute(Target_Expression_States-Threshold_Expression_States)
+            Threshold_Expression_States = np.zeros(Original_Gene.shape[0])
+            Active_Inds = np.where(Original_Gene >= Threshold)[0]
+            Threshold_Expression_States[Active_Inds] = 1
+            Differences = np.absolute(Imputed_Gene-Threshold_Expression_States)
             Error = np.sum(Differences)
             Error_Inds = np.where(Differences != 0)[0]
             if Error < Min_Error:
                 Min_Error = Error
                 Min_Thresh = Thresh
-                Impute_Cells = Imputed_Cells[np.where(np.isin(Imputed_Cells,Error_Inds) == 1)[0]]
-                Impute_Vector = np.zeros(Original_Gene.shape[0])
-                Impute_Vector[Impute_Cells] = 1
-                # Save minimum error imputation vector
-                Results[0] = Impute_Vector
-                # Save Thresholds for minimum error
-                Results[1] = Unique_Exspression[Thresh]
-                # Save optimal number of False Negatives
-                Results[4] = False_Negatives.shape[0]
-                # Save optimal number of False Positives
-                Results[5] = False_Positives.shape[0]
+                Results[0] = Unique_Exspression[Thresh]
             Track_Errors[Thresh] =  Error
         # Save Tracked Errors
-        Results[6] = Track_Errors
-        #plt.figure()
-        #plt.plot(Unique_Exspression,Errors[0,:])
-        #plt.vlines(Min_Error_Ind,min(Errors[0,:]),max(Errors[0,:]),color="r")        
-        #plt.figure()
-        #plt.scatter(np.arange(Original_Gene.shape[0]),Original_Gene)
-        #plt.scatter(np.where(np.isnan(Imputed_Data[:,Ind]))[0],Original_Gene[np.where(np.isnan(Imputed_Data[:,Ind]))[0]])
-        #plt.scatter(Results[1],Original_Data[Results[1],Ind])
+        Results[1] = Track_Errors
     else:
-        Results[0] = np.repeat(-1,Original_Gene.shape[0])
+        Results[0] = -1
         Results[1] = -1
-        Results[2] = -1
-        Results[3] = -1
-        Results[4] = -1
-        Results[5] = -1
-        Results[6] = -1
     return Results
 
 
 ###
 
-def Estimate_Feature_Importance(Intended_Divergence, Binarised_Input_Matrix, Cycle_Suggested_Imputations, Num_Cycles = 5, Min_Clust_Size = 5, Use_Cores = -1, Auto_Save = 1):
+def Estimate_Feature_Importance(Intended_Divergence, Binarised_Input_Matrix, Cycle_Suggested_Imputations, Max_Num_Cycles = 5, Min_Clust_Size = 5, Use_Cores = -1, Auto_Save = 1):
     # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -907,8 +864,8 @@ def Estimate_Feature_Importance(Intended_Divergence, Binarised_Input_Matrix, Cyc
     print("Number of cells: " + str(Cell_Cardinality))
     print("Number of genes: " + str(Gene_Cardinality))
     Feature_Divergences = []
-    for Cycle in np.arange(Num_Cycles):
-        print("Cycle Number: " + str(Cycle+1) + " of " + str(Num_Cycles))
+    for Cycle in np.arange(Max_Num_Cycles):
+        print("Cycle Number: " + str(Cycle+1) + " of " + str(Max_Num_Cycles))
         Minority_Group_Matrix = copy.copy(Binarised_Input_Matrix)
         Minority_Group_Matrix[Cycle_Suggested_Imputations] = (Minority_Group_Matrix[Cycle_Suggested_Imputations] * -1) + 1
         # Remove genes below Min_Clust_Size
@@ -921,9 +878,10 @@ def Estimate_Feature_Importance(Intended_Divergence, Binarised_Input_Matrix, Cyc
         #global Cell_Cardinality
         Cell_Cardinality = Minority_Group_Matrix.shape[0]
         #global Gene_Cardinality
-        Gene_Cardinality = Minority_Group_Matrix.shape[1]   
-        print("Number of cells: " + str(Cell_Cardinality))
-        print("Number of genes: " + str(Gene_Cardinality))
+        Gene_Cardinality = Minority_Group_Matrix.shape[1]
+        if Cycle == 0: 
+            print("Number of cells: " + str(Cell_Cardinality))
+            print("Number of genes: " + str(Gene_Cardinality))
         Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
         # Switch Minority/Majority states to 0/1 where necessary. 
         Minority_Group_Matrix[:,Switch_State_Inidicies] = (Minority_Group_Matrix[:,Switch_State_Inidicies] * -1) + 1
