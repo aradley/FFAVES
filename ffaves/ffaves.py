@@ -65,6 +65,8 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
         ### Step 1 of FFAVES is to identify and temporarily remove spurious Minority Group expression states
         with np.errstate(divide='ignore',invalid='ignore'):
             Step_1_Type_1_Error_Inds, Switch_State_Inidicies_1, Cell_Uncertainties = FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
+        # Switch Minority_Group_Matrix Inds
+        Minority_Group_Matrix[Step_1_Type_1_Error_Inds] = (Minority_Group_Matrix[Step_1_Type_1_Error_Inds] - 1) * -1
         # Track Cell_Uncertainties
         Cycle_Cell_Uncertainties = Cycle_Cell_Uncertainties + Cell_Uncertainties
         #
@@ -78,34 +80,45 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
             Void_Type_1_Errors = np.ravel_multi_index((Step_1_Type_1_Error_Inds[0][Void_Type_1_Errors],Step_1_Type_1_Error_Inds[1][Void_Type_1_Errors]), Binarised_Input_Matrix.shape)
             Ignore_Imputations = np.where(np.isin(Flat_All_Impute_Inds,Flat_Step_1_Inds))[0]
             Flat_All_Impute_Inds = np.delete(Flat_All_Impute_Inds,Ignore_Imputations)       
-        if Impute_Type_1_Errors.shape[0] > 0:
-            Impute_Type_1_Errors = np.ravel_multi_index((Step_1_Type_1_Error_Inds[0][Impute_Type_1_Errors],Step_1_Type_1_Error_Inds[1][Impute_Type_1_Errors]), Binarised_Input_Matrix.shape)
-            Flat_All_Impute_Inds = np.unique(np.append(Flat_All_Impute_Inds,Impute_Type_1_Errors))
         All_Impute_Inds = np.unravel_index(Flat_All_Impute_Inds,Binarised_Input_Matrix.shape)
-        Minority_Group_Matrix[Step_1_Type_1_Error_Inds] = (Minority_Group_Matrix[Step_1_Type_1_Error_Inds] - 1) * -1
+        ### Don't use below because removal of false positives should be temporary
+        #if Impute_Type_1_Errors.shape[0] > 0:
+        #    Impute_Type_1_Errors = np.ravel_multi_index((Step_1_Type_1_Error_Inds[0][Impute_Type_1_Errors],Step_1_Type_1_Error_Inds[1][Impute_Type_1_Errors]), Binarised_Input_Matrix.shape)
+        #    Flat_All_Impute_Inds = np.unique(np.append(Flat_All_Impute_Inds,Impute_Type_1_Errors))
         ### Step 2 of FFAVES is to identify which majority states points are spurious
         with np.errstate(divide='ignore',invalid='ignore'):
-            Type_2_Error_Inds, Switch_State_Inidicies_2, Cell_Uncertainties, Average_Imputed_Divergence = FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)        
+            Step_2_Type_2_Error_Inds, Switch_State_Inidicies_2, Cell_Uncertainties, Average_Imputed_Divergence = FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)        
+        # Switch Minority_Group_Matrix Inds
+        Minority_Group_Matrix[Step_2_Type_2_Error_Inds] = (Minority_Group_Matrix[Step_2_Type_2_Error_Inds] - 1) * -1
         # Track Cell_Uncertainties
         Cycle_Cell_Uncertainties = Cycle_Cell_Uncertainties + Cell_Uncertainties
         #
         State_Inversions[Switch_State_Inidicies_2] = (State_Inversions[Switch_State_Inidicies_2] * -1) + 1
         State_Inversion_Inds = np.where(State_Inversions == 1)[0]
         Flat_All_Impute_Inds = np.ravel_multi_index(All_Impute_Inds, Binarised_Input_Matrix.shape)
-        Flat_Step_2_Inds = np.ravel_multi_index(Type_2_Error_Inds, Binarised_Input_Matrix.shape)
-        Void_Type_2_Errors = np.where(np.isin(Type_2_Error_Inds[1],State_Inversion_Inds)==1)[0]
-        Impute_Type_2_Errors = np.where(np.isin(Type_2_Error_Inds[1],State_Inversion_Inds)==0)[0]
+        Flat_Step_2_Inds = np.ravel_multi_index(Step_2_Type_2_Error_Inds, Binarised_Input_Matrix.shape)
+        Void_Type_2_Errors = np.where(np.isin(Step_2_Type_2_Error_Inds[1],State_Inversion_Inds)==1)[0]
+        Impute_Type_2_Errors = np.where(np.isin(Step_2_Type_2_Error_Inds[1],State_Inversion_Inds)==0)[0]
         if Void_Type_2_Errors.shape[0] > 0:
-            Void_Type_2_Errors = np.ravel_multi_index((Type_2_Error_Inds[0][Void_Type_2_Errors],Type_2_Error_Inds[1][Void_Type_2_Errors]), Binarised_Input_Matrix.shape)
+            Void_Type_2_Errors = np.ravel_multi_index((Step_2_Type_2_Error_Inds[0][Void_Type_2_Errors],Step_2_Type_2_Error_Inds[1][Void_Type_2_Errors]), Binarised_Input_Matrix.shape)
             Ignore_Imputations = np.where(np.isin(Flat_All_Impute_Inds,Flat_Step_2_Inds))[0]
             Flat_All_Impute_Inds = np.delete(Flat_All_Impute_Inds,Ignore_Imputations) 
         if Impute_Type_2_Errors.shape[0] > 0:
-            Impute_Type_2_Errors = np.ravel_multi_index((Type_2_Error_Inds[0][Impute_Type_2_Errors],Type_2_Error_Inds[1][Impute_Type_2_Errors]), Binarised_Input_Matrix.shape)
+            Impute_Type_2_Errors = np.ravel_multi_index((Step_2_Type_2_Error_Inds[0][Impute_Type_2_Errors],Step_2_Type_2_Error_Inds[1][Impute_Type_2_Errors]), Binarised_Input_Matrix.shape)
             Flat_All_Impute_Inds = np.unique(np.append(Flat_All_Impute_Inds,Impute_Type_2_Errors))
         All_Impute_Inds = np.unravel_index(Flat_All_Impute_Inds,Binarised_Input_Matrix.shape)
+        ### Step 3 of FFAVES is to NULL any suggested False Negative imputations that are spurious/conflicting
+        with np.errstate(divide='ignore',invalid='ignore'):
+            Step_3_Type_1_Error_Inds, Switch_State_Inidicies_3, Cell_Uncertainties = FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality)
+        # Void conflicting suggested false negative imputations
+        Flat_All_Impute_Inds = np.ravel_multi_index(All_Impute_Inds, Binarised_Input_Matrix.shape)
+        Flat_Step_3_Inds = np.ravel_multi_index(Step_3_Type_1_Error_Inds, Binarised_Input_Matrix.shape)
+        Void_All_Impute_Inds = np.where(np.isin(Flat_All_Impute_Inds,Flat_Step_3_Inds)==1)[0]
+        Flat_All_Impute_Inds = np.delete(Flat_All_Impute_Inds,Void_All_Impute_Inds)
+        All_Impute_Inds = np.unravel_index(Flat_All_Impute_Inds,Binarised_Input_Matrix.shape)        
         ### Track Erroneous points
         Cycle_Imputation_Steps[0] = Step_1_Type_1_Error_Inds
-        Cycle_Imputation_Steps[1] = Type_2_Error_Inds
+        Cycle_Imputation_Steps[1] = Step_2_Type_2_Error_Inds
         Cycle_Imputation_Steps[2] = All_Impute_Inds
         Track_Imputation_Steps[Imputation_Cycle] = Cycle_Imputation_Steps
         Track_Cell_Uncertainties[(Imputation_Cycle-1),:] = Cycle_Cell_Uncertainties 
@@ -172,19 +185,22 @@ def FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     return Type_2_Error_Inds, Switch_State_Inidicies, Cell_Uncertainties, Average_Imputed_Divergence
 
 
-# def Track_Changes(Switch_State_Inidicies_1,Switch_State_Inidicies_2,Binarised_Input_Matrix):
-#     # Flip genes states back where required
-#     Minority_Group_Matrix[:,Switch_State_Inidicies_1] = (Minority_Group_Matrix[:,Switch_State_Inidicies_1] * -1) + 1
-#     Minority_Group_Matrix[:,Switch_State_Inidicies_2] = (Minority_Group_Matrix[:,Switch_State_Inidicies_2] * -1) + 1
-#     # Identify what has changed compared to initial data
-#     State_Changes = Binarised_Input_Matrix - Minority_Group_Matrix
-#     # Identify spurious active expression points
-#     False_Positive_Inds = np.where(State_Changes == 1)
-#     # Identify spurious inactive expression points
-#     False_Negative_Inds = np.where(State_Changes == -1)
-#     # Track Cell Uncertainties
-#     Cell_Uncertainties = np.sum(State_Changes != 0,axis=1)
-#     return False_Positive_Inds, False_Negative_Inds, Cell_Uncertainties
+def FFAVES_Step_3(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell_Cardinality,Gene_Cardinality):
+    print("Step 3: Ignoring conflicting suggested imputations.")
+    print("Identifying Sort Info for calculations.") 
+    # Create Minority_Group_Matrix objects, Permutables and Switch_State_Inidicies objects.
+    Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
+    # Switch Minority/Majority states to 0/1 where necessary.
+    Minority_Group_Matrix[:,Switch_State_Inidicies] = (Minority_Group_Matrix[:,Switch_State_Inidicies] * -1) + 1  
+    # Calculate minority group overlap matrix 
+    Reference_Gene_Minority_Group_Overlaps = Parallel_Find_Minority_Group_Overlaps(Use_Cores,Gene_Cardinality)
+    Permutables[Permutables < Min_Clust_Size] = np.nan
+    print("Calculating Divergence Matrix.")
+    Type_1_Error_Divergences = Parallel_Calculate_Cell_Divergences("1",Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)
+    Type_1_Error_Inds_1, Cell_Uncertainties_1_1 = Extract_Divergence_Info("1", Type_1_Error_Divergences, Divergences_Significance_Cut_Off)
+    Type_1_Error_Inds_1 = np.unravel_index(Type_1_Error_Inds_1,Minority_Group_Matrix.shape)
+    Cell_Uncertainties = Cell_Uncertainties_1_1
+    return Type_1_Error_Inds_1, Switch_State_Inidicies, Cell_Uncertainties
 
 
 ### Here we have all of FFAVES subfunctions that are needed to calculate ES scores. ###
@@ -806,7 +822,7 @@ def Parallel_Optimise_Discretisation_Thresholds(Original_Data,Binarised_Input_Ma
     Thresholds = Result[:,0]
     Track_Errors = Result[:,1]
     if Auto_Save == 1:
-        np.save("Thresholds.npy",Thresholds)
+        np.save("Optimised_Thresholds.npy",Thresholds)
         np.save("Track_Errors.npy",Track_Errors)
     return Thresholds, Track_Errors
 
