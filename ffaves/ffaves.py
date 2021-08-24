@@ -10,7 +10,7 @@ from scipy.stats import halfnorm, zscore
 
 ### Here we have the FFAVES wrapper function that executes all the steps of FFAVES. ###
 
-def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_Cut_Off = 0.999, Use_Cores= -1, Max_Num_Cycles = 10, Tolerance = 0.1, Auto_Save = 1):
+def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_Cut_Off = 0.99, Use_Cores= -1, Max_Num_Cycles = 15, Tolerance = 0.1, Auto_Save = 1):
     # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -21,7 +21,7 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
     print("Cores Used: " + str(Use_Cores))
     # Remove genes below Min_Clust_Size
     Keep_Features = np.where(np.sum(Binarised_Input_Matrix,axis=0) >= Min_Clust_Size)[0]
-    Ignore = np.where(np.sum(Binarised_Input_Matrix,axis=0) >= (Binarised_Input_Matrix.shape[1]-Min_Clust_Size))[0] 
+    Ignore = np.where(np.sum(Binarised_Input_Matrix,axis=0) >= (Binarised_Input_Matrix.shape[0]-Min_Clust_Size))[0] 
     Keep_Features = np.delete(Keep_Features,np.where(np.isin(Keep_Features,Ignore))[0])
     if Keep_Features.shape[0] < Binarised_Input_Matrix.shape[1]:
         print("Ignoring " + str(Binarised_Input_Matrix.shape[1]-Keep_Features.shape[0]) + " features which are below the Min_Clust_Threshold")
@@ -37,6 +37,7 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
     # Set up Minority_Group_Matrix
     global Minority_Group_Matrix
     # Track what cycle FFAVES is on.
+    global Imputation_Cycle
     Imputation_Cycle = 1
     print("Number of cells: " + str(Cell_Cardinality))
     print("Number of genes: " + str(Gene_Cardinality))
@@ -163,6 +164,21 @@ def FFAVES_Step_1(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     Type_1_Error_Divergences = Parallel_Calculate_Cell_Divergences("1",Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)
     Type_1_Error_Inds_1, Cell_Uncertainties_1_1 = Extract_Divergence_Info("1", Type_1_Error_Divergences, Divergences_Significance_Cut_Off)
     Type_1_Error_Inds_1 = np.unravel_index(Type_1_Error_Inds_1,Minority_Group_Matrix.shape)
+    # ##
+    # Imputations = np.zeros(Minority_Group_Matrix.shape)
+    # Imputations[Type_1_Error_Inds_1] = 1
+    # colors = {"black":0,"yellow":1}
+    # l_colors = sorted(colors, key=colors.get)
+    # cMap = c.ListedColormap(l_colors)
+    # yticklabels = np.linspace(0,Imputations.shape[0],21)
+    # plt.figure(figsize=(7,6))
+    # plt.scatter(0,0,c=l_colors[1],label="Identified FPs",zorder=-1,marker="s",edgecolors="k")
+    # plt.legend(loc = "lower right")
+    # sns.heatmap(Imputations,cmap=l_colors, vmin=0, vmax=len(colors),cbar=False,yticklabels=False,xticklabels=False)
+    # plt.xlabel(str(Binarised_Data.shape[1]) + " Genes",fontsize=14)
+    # plt.ylabel(str(Binarised_Data.shape[0]) + " Cells" ,fontsize=14)
+    # plt.title("Cycle " + str(Imputation_Cycle) +"\n False Positives Identified By FFAVES",fontsize=16)
+    # ##
     Cell_Uncertainties = Cell_Uncertainties_1_1
     return Type_1_Error_Inds_1, Switch_State_Inidicies, Cell_Uncertainties
 
@@ -181,6 +197,21 @@ def FFAVES_Step_2(Min_Clust_Size,Divergences_Significance_Cut_Off,Use_Cores,Cell
     Type_2_Error_Divergences = Parallel_Calculate_Cell_Divergences("2",Cell_Cardinality,Gene_Cardinality,Permutables,Reference_Gene_Minority_Group_Overlaps,Use_Cores)
     Type_2_Error_Inds, Cell_Uncertainties = Extract_Divergence_Info("2", Type_2_Error_Divergences, Divergences_Significance_Cut_Off)
     Type_2_Error_Inds = np.unravel_index(Type_2_Error_Inds,Minority_Group_Matrix.shape)
+    # ##
+    # Imputations = np.zeros(Minority_Group_Matrix.shape)
+    # Imputations[Type_2_Error_Inds] = 1
+    # colors = {"black":0,"yellow":1}
+    # l_colors = sorted(colors, key=colors.get)
+    # cMap = c.ListedColormap(l_colors)
+    # yticklabels = np.linspace(0,Imputations.shape[0],21)
+    # plt.figure(figsize=(7,6))
+    # plt.scatter(0,0,c=l_colors[1],label="Identified FNs",zorder=-1,marker="s",edgecolors="k")
+    # plt.legend(loc = "lower right")
+    # sns.heatmap(Imputations,cmap=l_colors, vmin=0, vmax=len(colors),cbar=False,yticklabels=False,xticklabels=False)
+    # plt.xlabel(str(Binarised_Data.shape[1]) + " Genes",fontsize=14)
+    # plt.ylabel(str(Binarised_Data.shape[0]) + " Cells" ,fontsize=14)
+    # plt.title("Cycle " + str(Imputation_Cycle) +"\n False Negatives Identified By FFAVES",fontsize=16)
+    # ##
     Average_Imputed_Divergence = np.mean(Type_2_Error_Divergences[Type_2_Error_Inds])
     return Type_2_Error_Inds, Switch_State_Inidicies, Cell_Uncertainties, Average_Imputed_Divergence
 
@@ -221,11 +252,14 @@ def Extract_Divergence_Info(Error_Type, Error_Divergences, Divergences_Significa
     else:
         Use_Inds = np.where(Minority_Group_Matrix == 0)
     Divergences = Error_Divergences[Use_Inds]
-    # Get zscores for observed divergences    
-    zscores = zscore(Divergences)
-    zscores = zscores + np.absolute(np.min(zscores))
+    ## Get zscores for observed divergences
+    # Calculate the standard deviation for the unfolded normal distribution
+    std = np.std(np.append(Divergences,-Divergences))
+    # Calculate z-scores with sample mean = 0 
+    zscores = Divergences/std
+    #zscores = zscores + np.absolute(np.min(zscores))
     # Identify points that diverge in a statistically significant way
-    Pass_Threshold = np.where(halfnorm.cdf(zscores) >= Divergences_Significance_Cut_Off)[0]
+    Pass_Threshold = np.where(halfnorm.cdf(zscores,loc=0) >= Divergences_Significance_Cut_Off)[0]
     Error_Inds = (Use_Inds[0][Pass_Threshold],Use_Inds[1][Pass_Threshold])
     Error_Inds = np.ravel_multi_index(Error_Inds, Minority_Group_Matrix.shape)
     return Error_Inds, Cell_Uncertainties
@@ -320,7 +354,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
             # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed,
             # hence ignore them.
-            Informative_Genes = np.where(RG_QG_Divergences >= 0)[0]
+            Informative_Genes = np.where(RG_QG_Divergences > 0)[0]
             # Get Overlap Matrix
             Sort_Genes = Minority_Group_Matrix[np.ix_(Fixed_Gene_Minority_States,Partitioning_Inds[Sort_Out_Of_Inds][Informative_Genes])]
             Sort_Out_Of_Partitioning_Divergences = np.zeros(Cell_Cardinality)
@@ -357,7 +391,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
             # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed,
             # hence ignore them.
-            Informative_Genes = np.where(RG_QG_Divergences >= 0)[0]
+            Informative_Genes = np.where(RG_QG_Divergences > 0)[0]
             # Get Overlap Matrix
             Sort_Genes = Minority_Group_Matrix[np.ix_(Fixed_Gene_Minority_States,Partitioning_Inds[Sort_Into_Inds][Informative_Genes])]
             Sort_Into_Partitioning_Divergences = np.zeros(Cell_Cardinality)
@@ -399,7 +433,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
             # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed,
             # hence ignore them.
-            Informative_Genes = np.where(RG_QG_Divergences >= 0)[0]
+            Informative_Genes = np.where(RG_QG_Divergences > 0)[0]
             # Get Overlap Matrix
             Sort_Genes = Minority_Group_Matrix[np.ix_(Fixed_Gene_Minority_States,Permuting_Inds[Sort_Out_Of_Inds][Informative_Genes])]
             Sort_Out_Of_Permuting_Divergences = np.zeros(Cell_Cardinality)
@@ -452,7 +486,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
             # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed,
             # hence ignore them.
-            Informative_Genes = np.where(RG_QG_Divergences >= 0)[0]
+            Informative_Genes = np.where(RG_QG_Divergences > 0)[0]
             # Get Overlap Matrix
             Sort_Genes = Minority_Group_Matrix[np.ix_(Fixed_Gene_Majority_States,Permuting_Inds[Sort_Into_Inds][Informative_Genes])]
             Sort_Into_Permuting_Divergences = np.zeros(Cell_Cardinality)
@@ -505,7 +539,7 @@ def Calculate_Cell_Divergences(Pass_Info_To_Cores,Error_Type,Cell_Cardinality,Pe
             RG_QG_Divergences[np.isnan(RG_QG_Divergences)] = 0
             # Featues whose RG_QG_Divergences are less than 0 would add more entropy to the system per data point imputed,
             # hence ignore them.
-            Informative_Genes = np.where(RG_QG_Divergences >= 0)[0]
+            Informative_Genes = np.where(RG_QG_Divergences > 0)[0]
             # Get feature divergences
             Feature_Divergences = np.zeros(Permutables.shape[0])
             if Informative_Genes.shape[0] > 0:
@@ -806,59 +840,44 @@ def Parallel_Optimise_Discretisation_Thresholds(Original_Data,Binarised_Input_Ma
             Use_Cores = 1
     print("Cores Avaiblable: " + str(Cores_Available))
     print("Cores Used: " + str(Use_Cores))
-    Paired = [[]] * Original_Data.shape[1]
     Binarised_Input_Matrix[Cycle_Suggested_Imputations] = (Binarised_Input_Matrix[Cycle_Suggested_Imputations] * -1) +1 
-    for i in np.arange(Original_Data.shape[1]):
-        Paired[i] = np.stack((Original_Data[:,i],Binarised_Input_Matrix[:,i]))
-    # Convert suggested imputation points to unknown state.
-    Binarised_Input_Matrix[Cycle_Suggested_Imputations] = np.nan
-    for i in np.arange(Original_Data.shape[1]):
-        Paired[i] = np.vstack((Paired[i],Binarised_Input_Matrix[:,i])) 
+    # Only use features where imputation actually occoured
+    Use = np.unique(Cycle_Suggested_Imputations[1])
+    Paired = [[]] * Use.shape[0]
+    for i in np.arange(Use.shape[0]):
+        Paired[i] = np.stack((Original_Data[:,Use[i]],Binarised_Input_Matrix[:,Use[i]]))
     pool = multiprocessing.Pool(processes = Use_Cores)
     Result = pool.map(Optimise_Discretisation_Thresholds, Paired)
     pool.close()
     pool.join()
+    Optimal_Threshold = np.repeat(-1,Binarised_Input_Matrix.shape[1]).astype("f")
+    Optimal_Threshold[Use] = np.asarray(Result)
     Result = np.asarray(Result,dtype=object)
-    Thresholds = Result[:,0]
-    Track_Errors = Result[:,1]
     if Auto_Save == 1:
-        np.save("Optimised_Thresholds.npy",Thresholds)
-        np.save("Track_Errors.npy",Track_Errors)
-    return Thresholds, Track_Errors
+        np.save("Optimised_Thresholds.npy",Optimal_Threshold)
+    return Optimal_Threshold
 
 def Optimise_Discretisation_Thresholds(Paired):
     Original_Gene = Paired[0,:]
     Imputed_Gene = Paired[1,:]
-    Imputed_Cells = np.where(np.isnan(Paired[2,:]))[0]
-    Results = [[]] * 2
-    if Imputed_Cells.shape[0] > 0:
-        Unique_Exspression = np.unique(Original_Gene)
-        Min_Error = np.inf
-        Track_Errors = np.zeros(Unique_Exspression.shape[0])
-        for Thresh in np.arange(Unique_Exspression.shape[0]):
-            Threshold = Unique_Exspression[Thresh]
-            Threshold_Expression_States = np.zeros(Original_Gene.shape[0])
-            Active_Inds = np.where(Original_Gene >= Threshold)[0]
-            Threshold_Expression_States[Active_Inds] = 1
-            Differences = np.absolute(Imputed_Gene-Threshold_Expression_States)
-            Error = np.sum(Differences)
-            Error_Inds = np.where(Differences != 0)[0]
-            if Error < Min_Error:
-                Min_Error = Error
-                Min_Thresh = Thresh
-                Results[0] = Unique_Exspression[Thresh]
-            Track_Errors[Thresh] =  Error
-        # Save Tracked Errors
-        Results[1] = Track_Errors
-    else:
-        Results[0] = -1
-        Results[1] = -1
-    return Results
+    Unique_Exspression = np.unique(Original_Gene)
+    Min_Error = np.inf
+    for Thresh in np.arange(Unique_Exspression.shape[0]):
+        Threshold = Unique_Exspression[Thresh]
+        Threshold_Expression_States = np.zeros(Original_Gene.shape[0])
+        Active_Inds = np.where(Original_Gene >= Threshold)[0]
+        Threshold_Expression_States[Active_Inds] = 1
+        Differences = np.absolute(Imputed_Gene-Threshold_Expression_States)
+        Error = np.sum(Differences)
+        if Error < Min_Error:
+            Min_Error = Error
+            Optimal_Threshold = Unique_Exspression[Thresh]
+    return Optimal_Threshold
 
 
 ###
 
-def Estimate_Feature_Importance(Intended_Divergence, Binarised_Input_Matrix, Cycle_Suggested_Imputations, Max_Num_Cycles = 5, Min_Clust_Size = 5, Use_Cores = -1, Auto_Save = 1):
+def Estimate_Feature_Weights(Dropout_Fraction, Binarised_Input_Matrix, Cycle_Suggested_Imputations, Itterations = 5, Min_Clust_Size = 5, Use_Cores = -1, Auto_Save = 1):
     # Set number of cores to use
     Cores_Available = multiprocessing.cpu_count()
     if Use_Cores == -1:
@@ -880,8 +899,8 @@ def Estimate_Feature_Importance(Intended_Divergence, Binarised_Input_Matrix, Cyc
     print("Number of cells: " + str(Cell_Cardinality))
     print("Number of genes: " + str(Gene_Cardinality))
     Feature_Divergences = []
-    for Cycle in np.arange(Max_Num_Cycles):
-        print("Cycle Number: " + str(Cycle+1) + " of " + str(Max_Num_Cycles))
+    for Cycle in np.arange(Itterations):
+        print("Cycle Number: " + str(Cycle+1) + " of " + str(Itterations))
         Minority_Group_Matrix = copy.copy(Binarised_Input_Matrix)
         Minority_Group_Matrix[Cycle_Suggested_Imputations] = (Minority_Group_Matrix[Cycle_Suggested_Imputations] * -1) + 1
         # Remove genes below Min_Clust_Size
@@ -895,16 +914,13 @@ def Estimate_Feature_Importance(Intended_Divergence, Binarised_Input_Matrix, Cyc
         Cell_Cardinality = Minority_Group_Matrix.shape[0]
         #global Gene_Cardinality
         Gene_Cardinality = Minority_Group_Matrix.shape[1]
-        if Cycle == 0: 
-            print("Number of cells: " + str(Cell_Cardinality))
-            print("Number of genes: " + str(Gene_Cardinality))
         Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
         # Switch Minority/Majority states to 0/1 where necessary. 
         Minority_Group_Matrix[:,Switch_State_Inidicies] = (Minority_Group_Matrix[:,Switch_State_Inidicies] * -1) + 1
         # Intentionally Add Error
         for i in np.arange(Minority_Group_Matrix.shape[1]):
             Feature_Minority_Inds = np.where(Minority_Group_Matrix[:,i] == 1)[0]
-            Null = np.random.choice(Feature_Minority_Inds.shape[0], int(Feature_Minority_Inds.shape[0]*Intended_Divergence),replace=False)
+            Null = np.random.choice(Feature_Minority_Inds.shape[0], int(Feature_Minority_Inds.shape[0]*Dropout_Fraction),replace=False)
             Minority_Group_Matrix[Feature_Minority_Inds[Null],i] = 0
         Permutables, Switch_State_Inidicies = Find_Permutations(Minority_Group_Matrix,Cell_Cardinality)
         # Switch Minority/Majority states to 0/1 where necessary. 
