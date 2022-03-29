@@ -1,11 +1,3 @@
-# FFAVES
-Streamlined FFAVES
-
-# File Structure
-FFAVES/
-    - main program
-Synthetic_Data/
-    - example data
 
 # FFAVES and ESFW
 This repository contains the code for our software, Functional Feature Amplification Via Entropy Sorting (FFAVES) and Entropy Sorting Feature Weighting (ESFW). A detailed description of these software can be found in our paper, Functional feature selection reveals the inner cell mass in human pre-implantation embryo single cell RNA sequencing data.
