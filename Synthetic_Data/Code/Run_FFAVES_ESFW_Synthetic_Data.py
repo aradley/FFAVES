@@ -89,6 +89,9 @@ plt.title("Entropy Sort Scores",fontsize=16)
 plt.xlabel("Gene IDs")
 plt.ylabel("Gene IDs")
 plt.colorbar()
+
+Feature_Divergences = np.load("Feature_Divergences.npy")
+Mean_Feature_Divergences = np.mean(Feature_Divergences,axis=0)
 # Inspect estimated feature weights
 plt.figure()
 plt.title("ESFW Estimated Feature Weights",fontsize=16)
