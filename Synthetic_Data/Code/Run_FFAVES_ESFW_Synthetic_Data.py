@@ -38,7 +38,7 @@ for i in np.arange(Dicretisation_Cutoffs.shape[0]):
 ## Auto_Save set to False so not to overwrite objects used for paper or save in undersired directory.
 ## Discretised_Data should be a numpy array of 0's and 1's with the rows as samples and the columns as features.
 # FFAVES
-Track_Imputation_Steps, Track_Percentage_Imputation, Track_Cell_Uncertainties = ffaves.FFAVES(Discretised_Data,Auto_Save=False)
+Track_Imputation_Steps, Track_Percentage_Imputation = ffaves.FFAVES(Discretised_Data,Auto_Save=False)
 # Calculate correlation matricies
 Chosen_Cycle = -1
 Sort_Gains, Sort_Weights, Cycle_Suggested_Imputations, ES_Matrices_Features_Used_Inds = ffaves.Calculate_ES_Sort_Matricies(Discretised_Data, Track_Imputation_Steps, Chosen_Cycle=Chosen_Cycle,Auto_Save=False)
