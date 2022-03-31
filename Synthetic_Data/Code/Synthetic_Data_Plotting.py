@@ -880,7 +880,7 @@ plt.show()
 Complete_Synthetic_Data = pd.read_csv(path+path_2+"Complete_Synthetic_Data.csv",header=0,index_col=0)
 Drop_Out_Synthetic_Data = pd.read_csv(path+path_2+"Drop_Out_Synthetic_Data.csv",header=0,index_col=0)
 # Load each imputed data. See the "Get_Imputed_Expression_Matricies.r" file for the creation of these objects.
-Synthetic_Imputation_MAGIC = pd.read_csv(path+path_2+"Synthetic_Imputation_MAGIC.csv",header=0,index_col=0)
+Synthetic_Imputation_MAGIC = pd.read_csv(path+path_2+"Synthetic_Imputation_MAGIC_Rounded.csv",header=0,index_col=0)
 Synthetic_Imputation_SAVER = pd.read_csv(path+path_2+"Synthetic_Imputation_SAVER.csv",header=0,index_col=0).T
 Synthetic_Imputation_FFAVES = pd.read_csv(path+path_2+"Synthetic_Imputation_FFAVES.csv",header=0,index_col=0)
 Synthetic_Imputation_ALRA = pd.read_csv(path+path_2+"Synthetic_Imputation_ALRA.csv",header=0,index_col=0).T
