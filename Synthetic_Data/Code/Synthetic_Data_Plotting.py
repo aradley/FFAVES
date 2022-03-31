@@ -2,8 +2,8 @@
 # the Entropy Sorting paper
 
 ### Set folder path ###
-path = "/mnt/c/Users/arthu/OneDrive - University of Cambridge/Entropy_Sorting_Paper_2022/"
-path_2 = "Synthetic_Data/Objects_For_Paper/"
+path = "/Users/aradley/Python_Folders/Enviroments/FFAVES_Test/FFAVES"
+path_2 = "/Synthetic_Data/Objects_From_Paper/"
 ###
 
 ### Import packages ###
@@ -29,7 +29,6 @@ Complete_Discretised_Data = np.asarray(copy.copy(Complete_Synthetic_Data))
 Complete_Discretised_Data[Complete_Discretised_Data > 0] = 1
 # Intentionally sub-optimal discretisation cut-offs that were selected during the creation of the synthetic data.
 Dicretisation_Cutoffs = np.load(path+path_2+"Dicretisation_Cutoffs.npy")
-Optimised_Thresholds = np.load(path+path_2+"Optimised_Thresholds.npy")
 
 # Discretise the data according to these sub-optimal thresholds.
 Discretised_Data = np.asarray(copy.copy(Drop_Out_Synthetic_Data))
@@ -39,15 +38,15 @@ for i in np.arange(Dicretisation_Cutoffs.shape[0]):
     Feature[Feature >= Dicretisation_Cutoffs[i]] = 1
     Discretised_Data[:,i] = Feature
 
-Track_Percentage_Imputation = np.load(path+path_2+"Track_Percentage_Imputation.npy")
-Sort_Gains = np.load(path+path_2+"Sort_Gains.npy")
-Sort_Weights = np.load(path+path_2+"Sort_Weights.npy")
-ES_Matrices_Features_Used_Inds = np.load(path+path_2+"ES_Matrices_Features_Used_Inds.npy")
-Cycle_Suggested_Imputations = np.load(path+path_2+"Cycle_Suggested_Imputations.npy")
-Track_Imputation_Steps = np.load(path+path_2+"Track_Imputation_Steps.npy",allow_pickle=True)
+Track_Percentage_Imputation = np.load("Track_Percentage_Imputation.npy")
+Sort_Gains = np.load("Sort_Gains.npy")
+Sort_Weights = np.load("Sort_Weights.npy")
+ES_Matrices_Features_Used_Inds = np.load("ES_Matrices_Features_Used_Inds.npy")
+Cycle_Suggested_Imputations = np.load("Cycle_Suggested_Imputations.npy")
+Track_Imputation_Steps = np.load("Track_Imputation_Steps.npy",allow_pickle=True)
+Optimised_Thresholds = np.load("Optimised_Thresholds.npy")
 # Using the final cycle of FFAVES suggested imputations
 Chosen_Cycle = -1
-
 Imputed_Discretised_Data = copy.copy(Discretised_Data)
 Imputed_Discretised_Data[(Cycle_Suggested_Imputations[0],Cycle_Suggested_Imputations[1])] = (Imputed_Discretised_Data[(Cycle_Suggested_Imputations[0],Cycle_Suggested_Imputations[1])]*-1) + 1
 
@@ -483,8 +482,6 @@ plt.ylabel("Frequency",fontsize=13)
 plt.xlabel("Gene Expression",fontsize=13)
 
 plt.show()
-
-
 
 
 
