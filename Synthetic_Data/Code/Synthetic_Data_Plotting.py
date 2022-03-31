@@ -38,13 +38,13 @@ for i in np.arange(Dicretisation_Cutoffs.shape[0]):
     Feature[Feature >= Dicretisation_Cutoffs[i]] = 1
     Discretised_Data[:,i] = Feature
 
-Track_Percentage_Imputation = np.load("Track_Percentage_Imputation.npy")
-Sort_Gains = np.load("Sort_Gains.npy")
-Sort_Weights = np.load("Sort_Weights.npy")
-ES_Matrices_Features_Used_Inds = np.load("ES_Matrices_Features_Used_Inds.npy")
-Cycle_Suggested_Imputations = np.load("Cycle_Suggested_Imputations.npy")
-Track_Imputation_Steps = np.load("Track_Imputation_Steps.npy",allow_pickle=True)
-Optimised_Thresholds = np.load("Optimised_Thresholds.npy")
+Track_Percentage_Imputation = np.load(path+path_2+"Track_Percentage_Imputation.npy")
+Sort_Gains = np.load(path+path_2+"Sort_Gains.npy")
+Sort_Weights = np.load(path+path_2+"Sort_Weights.npy")
+ES_Matrices_Features_Used_Inds = np.load(path+path_2+"ES_Matrices_Features_Used_Inds.npy")
+Cycle_Suggested_Imputations = np.load(path+path_2+"Cycle_Suggested_Imputations.npy")
+Track_Imputation_Steps = np.load(path+path_2+"Track_Imputation_Steps.npy",allow_pickle=True)
+Optimised_Thresholds = np.load(path+path_2+"Optimised_Thresholds.npy")
 # Using the final cycle of FFAVES suggested imputations
 Chosen_Cycle = -1
 Imputed_Discretised_Data = copy.copy(Discretised_Data)
