@@ -3,7 +3,7 @@ Here we present the reader with the initial synthetic data sets that were used i
 
 ### Code
 Within the Code folder there are 5 workflows:
-1. Run_FFAVES_ESFW_Synthetic_Data.py takes the synthetic datasets in the Objects_From_Paper folder and applies FFAVES and ESFW to re-create the results in the paper. You will need to run these scripts before you can plot some of the figures generated in the next workflow (2.). If you just want to plot the outputs of FFAVES/ESFW, rather than plotting comparisons with other software, skipe workflows 2. and 3. and move on to 4.
+1. Run_FFAVES_ESFW_Synthetic_Data.py takes the synthetic datasets in the Objects_From_Paper folder and applies FFAVES and ESFW to re-create the results in the paper. You will need to run these scripts before you can plot some of the figures generated in the next workflow (2.). If you just want to plot the outputs of FFAVES/ESFW, rather than plotting comparisons with other software, skip workflows 2. and 3. and move on to 4.
 2. Generate_Imputed_Expression_Matricies.r uses the outputs from FFAVES/ESFW, and a selection of previously published imputation software, to impute the noisy drop out synthetic data so that their performances may be compared.
 3. Generate_Gene_Rankings.r uses the outputs from FFAVES/ESFW, and a selection of previously published feature selection software, to rank gene importance in the drop out synthetic data so that their performances may be compared.
 4. Synthetic_Data_Plotting.py plots the above results.
