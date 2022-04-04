@@ -53,6 +53,7 @@ Optimised_Thresholds = ffaves.Parallel_Optimise_Discretisation_Thresholds(np.asa
 
 # Typically the function paramter Auto_Save defaults to True, meaning files are automatically saved to the current directory.
 # However, to keep the directories tidy for this our synthetica data example, we will save to the data directory pulled from github.
+np.save(path+path_2+"Track_Percentage_Imputation.npy",Track_Percentage_Imputation)
 np.save(path+path_2+"Track_Imputation_Steps.npy",Track_Imputation_Steps)
 np.save(path+path_2+"Sort_Gains.npy",Sort_Gains)
 np.save(path+path_2+"Sort_Weights.npy",Sort_Weights)
