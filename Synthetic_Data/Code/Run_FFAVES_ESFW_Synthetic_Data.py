@@ -101,7 +101,7 @@ plt.xlabel("Gene IDs")
 plt.ylabel("Gene IDs")
 plt.colorbar()
 
-Feature_Divergences = np.load("Feature_Divergences.npy")
+Feature_Divergences = np.load(path+path_2+"Feature_Divergences.npy")
 Mean_Feature_Divergences = np.mean(Feature_Divergences,axis=0)
 # Inspect estimated feature weights
 plt.figure()
