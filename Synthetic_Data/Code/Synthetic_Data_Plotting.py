@@ -83,66 +83,6 @@ plt.show()
 
 ### Visualise how well FFAVES imputes FNs/FPs of SD1 ###
 
-Imputations = Discretised_Data
-colors = {"black":0,"yellow":1}
-l_colors = sorted(colors, key=colors.get)
-cMap = c.ListedColormap(l_colors)
-yticklabels = np.linspace(0,Imputations.shape[0],21)
-plt.figure(figsize=(7,6))
-plt.scatter(0,0,c=l_colors[0],label="State = 0",zorder=-1,marker="s",edgecolors="k")
-plt.scatter(0,0,c=l_colors[1],label="State = 1",zorder=-1,marker="s",edgecolors="k")
-plt.legend(loc = "lower right")
-sns.heatmap(Imputations,cmap=l_colors, vmin=0, vmax=len(colors),cbar=False,yticklabels=False,xticklabels=False)
-plt.xlabel(str(Discretised_Data.shape[1]) + " Genes",fontsize=14)
-plt.ylabel(str(Discretised_Data.shape[0]) + " Cells" ,fontsize=14)
-plt.title("Discretised State Matrix (M)",fontsize=16)
-
-
-Suggested_FPs = np.zeros(Discretised_Data.shape)
-Suggested_FPs[Track_Imputation_Steps[Chosen_Cycle][0]] = Suggested_FPs[Track_Imputation_Steps[Chosen_Cycle][0]] + 1
-colors = {"black":0,"yellow":1}
-l_colors = sorted(colors, key=colors.get)
-cMap = c.ListedColormap(l_colors)
-yticklabels = np.linspace(0,Imputations.shape[0],21)
-plt.figure(figsize=(7,6))
-plt.scatter(0,0,c=l_colors[1],label="Identified FPs",zorder=-1,marker="s",edgecolors="k")
-plt.legend(loc = "lower right")
-sns.heatmap(Suggested_FPs,cmap=l_colors, vmin=0, vmax=len(colors),cbar=False,yticklabels=False,xticklabels=False)
-plt.xlabel(str(Suggested_FPs.shape[1]) + " Genes",fontsize=14)
-plt.ylabel(str(Suggested_FPs.shape[0]) + " Cells" ,fontsize=14)
-plt.title("FPs Identified by FFAVES",fontsize=16)
-
-
-Suggested_FNs = np.zeros(Discretised_Data.shape)
-Suggested_FNs[Track_Imputation_Steps[Chosen_Cycle][2]] = Suggested_FNs[Track_Imputation_Steps[Chosen_Cycle][2]] + 1
-colors = {"black":0,"yellow":1}
-l_colors = sorted(colors, key=colors.get)
-cMap = c.ListedColormap(l_colors)
-yticklabels = np.linspace(0,Imputations.shape[0],21)
-plt.figure(figsize=(7,6))
-plt.scatter(0,0,c=l_colors[1],label="Identified FNs",zorder=-1,marker="s",edgecolors="k")
-plt.legend(loc = "lower right")
-sns.heatmap(Suggested_FNs,cmap=l_colors, vmin=0, vmax=len(colors),cbar=False,yticklabels=False,xticklabels=False)
-plt.xlabel(str(Suggested_FNs.shape[1]) + " Genes",fontsize=14)
-plt.ylabel(str(Suggested_FNs.shape[0]) + " Cells" ,fontsize=14)
-plt.title("FNs Identified by FFAVES",fontsize=16)
-
-
-colors = {"black":0,"yellow":1}
-l_colors = sorted(colors, key=colors.get)
-cMap = c.ListedColormap(l_colors)
-yticklabels = np.linspace(0,Imputations.shape[0],21)
-plt.figure(figsize=(7,6))
-plt.scatter(0,0,c=l_colors[0],label="State = 0",zorder=-1,marker="s",edgecolors="k")
-plt.scatter(0,0,c=l_colors[1],label="State = 1",zorder=-1,marker="s",edgecolors="k")
-plt.legend(loc = "lower right")
-sns.heatmap(Imputed_Discretised_Data,cmap=l_colors, vmin=0, vmax=len(colors),cbar=False,yticklabels=False,xticklabels=False)
-plt.xlabel(str(Imputed_Discretised_Data.shape[1]) + " Genes",fontsize=14)
-plt.ylabel(str(Imputed_Discretised_Data.shape[0]) + " Cells" ,fontsize=14)
-plt.title("Augmented Discretised State Matrix (M')",fontsize=16)
-
-plt.show()
-
 # Visualise functional and indescriminate FPs/FNs.
 
 Imputations = np.zeros(Discretised_Data.shape)
