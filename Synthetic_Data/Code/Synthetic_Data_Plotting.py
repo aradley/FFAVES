@@ -2,8 +2,8 @@
 # the Entropy Sorting paper
 
 ### Set folder path ###
-path = "/Users/aradley/Python_Folders/Enviroments/FFAVES_Test/FFAVES"
-path_2 = "/Synthetic_Data/Objects_From_Paper/"
+path = "/mnt/c/Users/arthu/OneDrive - University of Cambridge/Entropy_Sorting_Paper_2022/"
+path_2 = "Synthetic_Data/Objects_For_Paper/"
 ###
 
 ### Import packages ###
@@ -29,6 +29,7 @@ Complete_Discretised_Data = np.asarray(copy.copy(Complete_Synthetic_Data))
 Complete_Discretised_Data[Complete_Discretised_Data > 0] = 1
 # Intentionally sub-optimal discretisation cut-offs that were selected during the creation of the synthetic data.
 Dicretisation_Cutoffs = np.load(path+path_2+"Dicretisation_Cutoffs.npy")
+Optimised_Thresholds = np.load(path+path_2+"Optimised_Thresholds.npy")
 
 # Discretise the data according to these sub-optimal thresholds.
 Discretised_Data = np.asarray(copy.copy(Drop_Out_Synthetic_Data))
@@ -44,9 +45,9 @@ Sort_Weights = np.load(path+path_2+"Sort_Weights.npy")
 ES_Matrices_Features_Used_Inds = np.load(path+path_2+"ES_Matrices_Features_Used_Inds.npy")
 Cycle_Suggested_Imputations = np.load(path+path_2+"Cycle_Suggested_Imputations.npy")
 Track_Imputation_Steps = np.load(path+path_2+"Track_Imputation_Steps.npy",allow_pickle=True)
-Optimised_Thresholds = np.load(path+path_2+"Optimised_Thresholds.npy")
 # Using the final cycle of FFAVES suggested imputations
 Chosen_Cycle = -1
+
 Imputed_Discretised_Data = copy.copy(Discretised_Data)
 Imputed_Discretised_Data[(Cycle_Suggested_Imputations[0],Cycle_Suggested_Imputations[1])] = (Imputed_Discretised_Data[(Cycle_Suggested_Imputations[0],Cycle_Suggested_Imputations[1])]*-1) + 1
 
@@ -68,7 +69,7 @@ cax = divider.append_axes("right", size="5%", pad=0.05)
 plt.colorbar(im, cax=cax).set_label(label="$log_(Gene\ Expression)$",size=14)
 
 plt.figure(figsize=(7,6))
-plt.title("30% Random Dropouts",fontsize=16)
+plt.title("40% Random Dropouts",fontsize=16)
 plt.xlabel("\n\n" + str(Drop_Out_Synthetic_Data.shape[1]) + " Genes",fontsize=14)
 plt.ylabel(str(Drop_Out_Synthetic_Data.shape[0]) + " Cells" ,fontsize=14)
 ax = plt.gca()
@@ -485,6 +486,8 @@ plt.show()
 
 
 
+
+
 ### Create Gene Clustering Plots, including Silhoutte scores ######
 Dropout_Sort_Gains = np.load(path+path_2+"Dropout_Sort_Gains.npy")
 Dropout_Sort_Weights = np.load(path+path_2+"Dropout_Sort_Weights.npy")
@@ -880,7 +883,7 @@ plt.show()
 Complete_Synthetic_Data = pd.read_csv(path+path_2+"Complete_Synthetic_Data.csv",header=0,index_col=0)
 Drop_Out_Synthetic_Data = pd.read_csv(path+path_2+"Drop_Out_Synthetic_Data.csv",header=0,index_col=0)
 # Load each imputed data. See the "Get_Imputed_Expression_Matricies.r" file for the creation of these objects.
-Synthetic_Imputation_MAGIC = pd.read_csv(path+path_2+"Synthetic_Imputation_MAGIC_Rounded.csv",header=0,index_col=0)
+Synthetic_Imputation_MAGIC = pd.read_csv(path+path_2+"Synthetic_Imputation_MAGIC.csv",header=0,index_col=0)
 Synthetic_Imputation_SAVER = pd.read_csv(path+path_2+"Synthetic_Imputation_SAVER.csv",header=0,index_col=0).T
 Synthetic_Imputation_FFAVES = pd.read_csv(path+path_2+"Synthetic_Imputation_FFAVES.csv",header=0,index_col=0)
 Synthetic_Imputation_ALRA = pd.read_csv(path+path_2+"Synthetic_Imputation_ALRA.csv",header=0,index_col=0).T
@@ -912,7 +915,7 @@ for ax in axs:
 # add subfigure per subplot
 gridspec = axs[0].get_subplotspec().get_gridspec()
 subfigs = [fig.add_subfigure(gs) for gs in gridspec]
-Row_Titles = np.array(["Ground Truth","30% Dropouts + Batch Effects","FFAVES Imputation","MAGIC Imputation","ALRA Imputation","SAVER Imputation"])
+Row_Titles = np.array(["Ground Truth","40% Dropouts + Batch Effects","FFAVES Imputation","MAGIC Imputation","ALRA Imputation","SAVER Imputation"])
 Row_Embeddings = [Complete_Embedding,Noisy_Embedding,FFAVES_Embedding,MAGIC_Embedding,ALRA_Embedding,SAVER_Embedding]
 
 for row, subfig in enumerate(subfigs):
@@ -993,7 +996,7 @@ ax.set_yticks(np.arange(0,1200,200))
 ax.set_xlim([Min_Silh, Max_Silh])
 ax.set_xlabel('Silhouette Coefficient Scores',fontsize=15)
 ax.set_ylabel('Cell IDs',fontsize=15,c="white")
-ax.set_title('30% Dropouts + Batch Effects',fontsize=15)
+ax.set_title('40% Dropouts + Batch Effects',fontsize=15)
 #plt.legend(labels=np.array(["Ground Truth Silhouettes"]),loc = "lower left")
 plt.tight_layout()
 plt.gca().invert_yaxis()
