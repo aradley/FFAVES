@@ -69,7 +69,7 @@ cax = divider.append_axes("right", size="5%", pad=0.05)
 plt.colorbar(im, cax=cax).set_label(label="$log_(Gene\ Expression)$",size=14)
 
 plt.figure(figsize=(7,6))
-plt.title("40% Random Dropouts",fontsize=16)
+plt.title("30% Random Dropouts",fontsize=16)
 plt.xlabel("\n\n" + str(Drop_Out_Synthetic_Data.shape[1]) + " Genes",fontsize=14)
 plt.ylabel(str(Drop_Out_Synthetic_Data.shape[0]) + " Cells" ,fontsize=14)
 ax = plt.gca()
@@ -915,7 +915,7 @@ for ax in axs:
 # add subfigure per subplot
 gridspec = axs[0].get_subplotspec().get_gridspec()
 subfigs = [fig.add_subfigure(gs) for gs in gridspec]
-Row_Titles = np.array(["Ground Truth","40% Dropouts + Batch Effects","FFAVES Imputation","MAGIC Imputation","ALRA Imputation","SAVER Imputation"])
+Row_Titles = np.array(["Ground Truth","30% Dropouts + Batch Effects","FFAVES Imputation","MAGIC Imputation","ALRA Imputation","SAVER Imputation"])
 Row_Embeddings = [Complete_Embedding,Noisy_Embedding,FFAVES_Embedding,MAGIC_Embedding,ALRA_Embedding,SAVER_Embedding]
 
 for row, subfig in enumerate(subfigs):
@@ -996,7 +996,7 @@ ax.set_yticks(np.arange(0,1200,200))
 ax.set_xlim([Min_Silh, Max_Silh])
 ax.set_xlabel('Silhouette Coefficient Scores',fontsize=15)
 ax.set_ylabel('Cell IDs',fontsize=15,c="white")
-ax.set_title('40% Dropouts + Batch Effects',fontsize=15)
+ax.set_title('30% Dropouts + Batch Effects',fontsize=15)
 #plt.legend(labels=np.array(["Ground Truth Silhouettes"]),loc = "lower left")
 plt.tight_layout()
 plt.gca().invert_yaxis()
