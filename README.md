@@ -1,6 +1,6 @@
 
 # FFAVES and ESFW
-This repository contains the code for our software, Functional Feature Amplification Via Entropy Sorting (FFAVES) and Entropy Sorting Feature Weighting (ESFW). A detailed description of these software can be found in our paper,[Functional feature selection reveals the inner cell mass in human pre-implantation embryo single cell RNA sequencing data](https://www.biorxiv.org/content/10.1101/2022.04.08.487653v1).
+This repository contains the code for our software, Functional Feature Amplification Via Entropy Sorting (FFAVES) and Entropy Sorting Feature Weighting (ESFW). A detailed description of these software can be found in our paper, [Functional feature selection reveals the inner cell mass in human pre-implantation embryo single cell RNA sequencing data](https://www.biorxiv.org/content/10.1101/2022.04.08.487653v1).
 
 ### Installation
 1. Retreive the ripository with: `git clone https://github.com/aradley/FFAVES.git`
