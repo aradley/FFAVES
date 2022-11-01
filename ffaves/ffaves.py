@@ -69,7 +69,7 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
         Cycle_Imputation_Steps = [[]] * 3
         # Initiate State_Inversions
         State_Inversions = np.zeros(Gene_Cardinality)
-        print("Cycle Number " + str(Imputation_Cycle))         
+        print("Cycle number " + str(Imputation_Cycle))         
         # Convert suggested imputation points from previous cycle to correct state.
         Minority_Group_Matrix = copy.copy(Binarised_Input_Matrix)
         Minority_Group_Matrix[All_Impute_Inds] = (Minority_Group_Matrix[All_Impute_Inds] - 1) * -1
