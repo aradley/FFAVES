@@ -51,7 +51,7 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
     global Minority_Group_Matrix
     # Track what cycle FFAVES is on.
     global Imputation_Cycle
-    Imputation_Cycle = 1
+    Imputation_Cycle = 0
     print("Number of cells: " + str(Cell_Cardinality))
     print("Number of genes: " + str(Gene_Cardinality))
     Track_Percentage_Imputation = np.zeros((3,Max_Num_Cycles+1))
@@ -61,6 +61,7 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
     Covergence_Counter = 0
     All_Impute_Inds = (np.array([]).astype("i"),np.array([]).astype("i"))
     while Imputation_Cycle <= Max_Num_Cycles and Covergence_Counter < 3:
+        Imputation_Cycle = Imputation_Cycle + 1
         if Imputation_Cycle > 1:
             print("Percentage of original data suggested as Type 1 Error: " + str(np.round((Track_Imputation_Steps[Imputation_Cycle-1][0][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")
             print("Percentage of original data suggested as Type 2 Error: " + str(np.round((Track_Imputation_Steps[Imputation_Cycle-1][2][0].shape[0]/(Binarised_Input_Matrix.shape[0]*Binarised_Input_Matrix.shape[1]))*100,2)) + "%")   
@@ -131,7 +132,6 @@ def FFAVES(Binarised_Input_Matrix, Min_Clust_Size = 5, Divergences_Significance_
                 Covergence_Counter = Covergence_Counter + 1
             else:
                 Covergence_Counter = 0
-        Imputation_Cycle = Imputation_Cycle + 1
     if Imputation_Cycle < Max_Num_Cycles:
         Track_Imputation_Steps = Track_Imputation_Steps[0:Imputation_Cycle]
         Track_Percentage_Imputation = Track_Percentage_Imputation[:,0:Imputation_Cycle]
